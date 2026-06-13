@@ -1,0 +1,150 @@
+package net.lgiki.soundmemo
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.view.WindowManager
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import net.lgiki.soundmemo.ui.SoundMemoViewModelFactory
+import net.lgiki.soundmemo.ui.library.LibraryScreen
+import net.lgiki.soundmemo.ui.library.LibraryViewModel
+import net.lgiki.soundmemo.ui.player.PlayerScreen
+import net.lgiki.soundmemo.ui.recorder.RecorderScreen
+import net.lgiki.soundmemo.ui.recorder.RecorderViewModel
+import net.lgiki.soundmemo.ui.settings.SettingsScreen
+import net.lgiki.soundmemo.ui.settings.SettingsViewModel
+import net.lgiki.soundmemo.ui.theme.SoundMemoTheme
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val container = (application as SoundMemoApplication).container
+        setContent {
+            val factory = SoundMemoViewModelFactory(container)
+            val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
+            val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
+            LaunchedEffect(settings.keepScreenAwake) {
+                if (settings.keepScreenAwake) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
+            }
+            SoundMemoTheme(settings = settings) {
+                SoundMemoApp(
+                    factory = factory,
+                    settingsViewModel = settingsViewModel,
+                )
+            }
+        }
+    }
+}
+
+private data class TopLevelDestination(
+    val route: String,
+    val label: String,
+    val icon: @Composable () -> Unit,
+)
+
+@Composable
+private fun SoundMemoApp(
+    factory: SoundMemoViewModelFactory,
+    settingsViewModel: SettingsViewModel,
+) {
+    val navController = rememberNavController()
+    val recorderViewModel: RecorderViewModel = viewModel(factory = factory)
+    val libraryViewModel: LibraryViewModel = viewModel(factory = factory)
+    val destinations = listOf(
+        TopLevelDestination("recorder", "Recorder") { Icon(Icons.Default.Mic, contentDescription = null) },
+        TopLevelDestination("library", "Library") { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
+        TopLevelDestination("settings", "Settings") { Icon(Icons.Default.Settings, contentDescription = null) },
+    )
+    Scaffold(
+        bottomBar = {
+            val backStackEntry by navController.currentBackStackEntryAsState()
+            val currentDestination = backStackEntry?.destination
+            NavigationBar {
+                destinations.forEach { destination ->
+                    NavigationBarItem(
+                        selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true,
+                        onClick = {
+                            navController.navigate(destination.route) {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = destination.icon,
+                        label = { Text(destination.label) },
+                    )
+                }
+            }
+        },
+    ) { padding ->
+        NavHost(
+            navController = navController,
+            startDestination = "recorder",
+            modifier = Modifier.padding(padding),
+        ) {
+            composable("recorder") {
+                val context = LocalContext.current
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestMultiplePermissions(),
+                ) { result ->
+                    if (result[Manifest.permission.RECORD_AUDIO] == true) {
+                        recorderViewModel.start(context)
+                    }
+                }
+                RecorderScreen(
+                    viewModel = recorderViewModel,
+                    onRecordRequest = {
+                        val missing = recorderViewModel.requiredPermissions().filter {
+                            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+                        }
+                        if (missing.isEmpty()) recorderViewModel.start(context) else permissionLauncher.launch(missing.toTypedArray())
+                    },
+                )
+            }
+            composable("library") {
+                LibraryScreen(
+                    viewModel = libraryViewModel,
+                    onOpenPlayer = { navController.navigate("player") },
+                    onStartRecording = { navController.navigate("recorder") },
+                )
+            }
+            composable("player") {
+                PlayerScreen(libraryViewModel.playback)
+            }
+            composable("settings") {
+                SettingsScreen(settingsViewModel)
+            }
+        }
+    }
+}
+
