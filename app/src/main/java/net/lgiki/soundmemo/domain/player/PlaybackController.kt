@@ -19,8 +19,9 @@ import kotlinx.coroutines.launch
 import net.lgiki.soundmemo.data.model.Recording
 
 class PlaybackController(context: Context) {
+    private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val player = ExoPlayer.Builder(context.applicationContext).build()
+    private val player = ExoPlayer.Builder(appContext).build()
     private val mutableState = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = mutableState.asStateFlow()
 
@@ -36,7 +37,7 @@ class PlaybackController(context: Context) {
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    mutableState.value = mutableState.value.copy(error = error.localizedMessage ?: "Playback failed.")
+                    mutableState.value = mutableState.value.copy(error = error.localizedMessage ?: appContext.getString(net.lgiki.soundmemo.R.string.playback_failed))
                 }
             },
         )
@@ -54,7 +55,7 @@ class PlaybackController(context: Context) {
 
     fun play(recording: Recording) {
         if (!File(recording.filePath).exists()) {
-            mutableState.value = mutableState.value.copy(error = "The audio file is missing.")
+            mutableState.value = mutableState.value.copy(error = appContext.getString(net.lgiki.soundmemo.R.string.playback_file_missing))
             return
         }
         mutableState.value = mutableState.value.copy(recording = recording, error = null, durationMs = recording.durationMs)

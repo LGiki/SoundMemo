@@ -8,6 +8,7 @@ data class AppSettings(
     val keepScreenAwake: Boolean = true,
     val recycleRetentionDays: Int = 30,
     val playbackSpeed: Float = 1f,
+    val locale: String = "system",
 )
 
 enum class ThemeMode {

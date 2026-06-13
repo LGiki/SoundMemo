@@ -24,6 +24,7 @@ class SettingsRepository(context: Context) {
             keepScreenAwake = prefs[KEEP_SCREEN_AWAKE] ?: true,
             recycleRetentionDays = prefs[RECYCLE_RETENTION_DAYS] ?: 30,
             playbackSpeed = prefs[PLAYBACK_SPEED] ?: 1f,
+            locale = prefs[LOCALE] ?: "system",
         )
     }
 
@@ -51,6 +52,10 @@ class SettingsRepository(context: Context) {
         dataStore.edit { it[PLAYBACK_SPEED] = speed }
     }
 
+    suspend fun setLocale(tag: String) {
+        dataStore.edit { it[LOCALE] = tag }
+    }
+
     private companion object {
         val THEME = stringPreferencesKey("theme")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
@@ -59,6 +64,7 @@ class SettingsRepository(context: Context) {
         val KEEP_SCREEN_AWAKE = booleanPreferencesKey("keep_screen_awake")
         val RECYCLE_RETENTION_DAYS = intPreferencesKey("recycle_retention_days")
         val PLAYBACK_SPEED = floatPreferencesKey("playback_speed")
+        val LOCALE = stringPreferencesKey("locale")
     }
 }
 

@@ -16,15 +16,17 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.settings.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-    Scaffold(topBar = { TopAppBar(title = { Text("Settings") }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.settings_title)) }) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -32,24 +34,36 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Appearance")
+            Text(stringResource(R.string.settings_appearance))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ThemeMode.entries.forEach { mode ->
                     FilterChip(
                         selected = settings.themeMode == mode,
                         onClick = { viewModel.setThemeMode(mode) },
-                        label = { Text(mode.name) },
+                        label = { Text(themeModeLabel(mode)) },
                     )
                 }
             }
             ListItem(
-                headlineContent = { Text("Dynamic color") },
-                supportingContent = { Text("Use system colors on Android 12 and later") },
+                headlineContent = { Text(stringResource(R.string.settings_dynamic_color)) },
+                supportingContent = { Text(stringResource(R.string.settings_dynamic_color_desc)) },
                 trailingContent = {
                     Switch(checked = settings.dynamicColor, onCheckedChange = viewModel::setDynamicColor)
                 },
             )
-            Text("Recording")
+
+            Text(stringResource(R.string.settings_language))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("system" to R.string.lang_system, "en" to R.string.lang_en, "zh-CN" to R.string.lang_zh_cn, "zh-TW" to R.string.lang_zh_tw).forEach { (tag, labelRes) ->
+                    FilterChip(
+                        selected = settings.locale == tag,
+                        onClick = { viewModel.setLocale(tag) },
+                        label = { Text(stringResource(labelRes)) },
+                    )
+                }
+            }
+
+            Text(stringResource(R.string.settings_recording_section))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(96_000, 128_000, 192_000).forEach { bitrate ->
                     FilterChip(
@@ -60,12 +74,13 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 }
             }
             ListItem(
-                headlineContent = { Text("Keep screen awake while recording") },
+                headlineContent = { Text(stringResource(R.string.settings_keep_screen_awake)) },
                 trailingContent = {
                     Switch(checked = settings.keepScreenAwake, onCheckedChange = viewModel::setKeepScreenAwake)
                 },
             )
-            Text("Playback")
+
+            Text(stringResource(R.string.settings_playback_section))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 listOf(0.5f, 1f, 1.5f, 2f).forEach { speed ->
                     FilterChip(
@@ -75,17 +90,25 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     )
                 }
             }
-            Text("Privacy")
+
+            Text(stringResource(R.string.settings_privacy))
             ListItem(
-                headlineContent = { Text("Local recordings only") },
-                supportingContent = { Text("SoundMemo has no account, ads, analytics, or cloud upload.") },
+                headlineContent = { Text(stringResource(R.string.settings_local_only)) },
+                supportingContent = { Text(stringResource(R.string.settings_local_only_desc)) },
             )
-            Text("About")
+
+            Text(stringResource(R.string.settings_about))
             ListItem(
-                headlineContent = { Text("SoundMemo") },
-                supportingContent = { Text("Open source Android voice recorder") },
+                headlineContent = { Text(stringResource(R.string.settings_about_app)) },
+                supportingContent = { Text(stringResource(R.string.settings_about_desc)) },
             )
         }
     }
 }
 
+@Composable
+private fun themeModeLabel(mode: ThemeMode): String = when (mode) {
+    ThemeMode.System -> stringResource(R.string.settings_theme_system)
+    ThemeMode.Light -> stringResource(R.string.settings_theme_light)
+    ThemeMode.Dark -> stringResource(R.string.settings_theme_dark)
+}

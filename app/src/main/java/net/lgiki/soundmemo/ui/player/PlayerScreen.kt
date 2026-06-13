@@ -24,8 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.domain.player.PlaybackController
 import net.lgiki.soundmemo.util.formatDateTime
 import net.lgiki.soundmemo.util.formatDuration
@@ -35,7 +37,7 @@ import net.lgiki.soundmemo.util.formatFileSize
 @Composable
 fun PlayerScreen(controller: PlaybackController) {
     val state by controller.state.collectAsStateWithLifecycle()
-    Scaffold(topBar = { TopAppBar(title = { Text("Player") }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.player_title)) }) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -46,7 +48,7 @@ fun PlayerScreen(controller: PlaybackController) {
         ) {
             val recording = state.recording
             if (recording == null) {
-                Text("Select a recording from the Library.", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.player_empty), style = MaterialTheme.typography.titleMedium)
             } else {
                 Text(recording.name, style = MaterialTheme.typography.headlineSmall)
                 Text(
@@ -65,16 +67,16 @@ fun PlayerScreen(controller: PlaybackController) {
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { controller.skipBy(-10_000) }) {
-                        Icon(Icons.Default.Replay10, contentDescription = "Skip back 10 seconds")
+                        Icon(Icons.Default.Replay10, contentDescription = stringResource(R.string.player_skip_back))
                     }
                     IconButton(onClick = controller::toggle) {
                         Icon(
                             if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (state.isPlaying) "Pause playback" else "Play recording",
+                            contentDescription = if (state.isPlaying) stringResource(R.string.player_pause) else stringResource(R.string.player_play),
                         )
                     }
                     IconButton(onClick = { controller.skipBy(10_000) }) {
-                        Icon(Icons.Default.Forward10, contentDescription = "Skip forward 10 seconds")
+                        Icon(Icons.Default.Forward10, contentDescription = stringResource(R.string.player_skip_forward))
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -10,17 +10,17 @@ fun formatDuration(ms: Long): String {
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
     return if (hours > 0) {
-        String.format(Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
+        String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
     } else {
-        String.format(Locale.US, "%02d:%02d", minutes, seconds)
+        String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
 }
 
 fun formatFileSize(bytes: Long): String {
     if (bytes < 1024) return "$bytes B"
     val kb = bytes / 1024.0
-    if (kb < 1024) return String.format(Locale.US, "%.1f KB", kb)
-    return String.format(Locale.US, "%.1f MB", kb / 1024.0)
+    if (kb < 1024) return String.format(Locale.getDefault(), "%.1f KB", kb)
+    return String.format(Locale.getDefault(), "%.1f MB", kb / 1024.0)
 }
 
 fun formatDateTime(epochMs: Long): String =

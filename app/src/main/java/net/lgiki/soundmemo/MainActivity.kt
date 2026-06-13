@@ -1,6 +1,7 @@
 package net.lgiki.soundmemo
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.WindowManager
@@ -23,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,8 +42,14 @@ import net.lgiki.soundmemo.ui.recorder.RecorderViewModel
 import net.lgiki.soundmemo.ui.settings.SettingsScreen
 import net.lgiki.soundmemo.ui.settings.SettingsViewModel
 import net.lgiki.soundmemo.ui.theme.SoundMemoTheme
+import net.lgiki.soundmemo.util.wrapWithLocale
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        val app = newBase.applicationContext as SoundMemoApplication
+        super.attachBaseContext(newBase.wrapWithLocale(app.currentLocale))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val container = (application as SoundMemoApplication).container
@@ -54,6 +62,16 @@ class MainActivity : ComponentActivity() {
                     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 } else {
                     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
+            }
+            LaunchedEffect(Unit) {
+                settingsViewModel.localeChanged.collect { tag ->
+                    if (tag != null) {
+                        val app = application as SoundMemoApplication
+                        app.updateLocale(tag)
+                        settingsViewModel.consumeLocaleChange()
+                        recreate()
+                    }
                 }
             }
             SoundMemoTheme(settings = settings) {
@@ -81,9 +99,9 @@ private fun SoundMemoApp(
     val recorderViewModel: RecorderViewModel = viewModel(factory = factory)
     val libraryViewModel: LibraryViewModel = viewModel(factory = factory)
     val destinations = listOf(
-        TopLevelDestination("recorder", "Recorder") { Icon(Icons.Default.Mic, contentDescription = null) },
-        TopLevelDestination("library", "Library") { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
-        TopLevelDestination("settings", "Settings") { Icon(Icons.Default.Settings, contentDescription = null) },
+        TopLevelDestination("recorder", stringResource(R.string.nav_recorder)) { Icon(Icons.Default.Mic, contentDescription = null) },
+        TopLevelDestination("library", stringResource(R.string.nav_library)) { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
+        TopLevelDestination("settings", stringResource(R.string.nav_settings)) { Icon(Icons.Default.Settings, contentDescription = null) },
     )
     Scaffold(
         bottomBar = {
@@ -147,4 +165,3 @@ private fun SoundMemoApp(
         }
     }
 }
-

@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.SoundMemoContainer
 import net.lgiki.soundmemo.data.model.Recording
 import net.lgiki.soundmemo.data.model.RecordingSort
@@ -82,7 +83,7 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        ContextCompat.startActivity(context, Intent.createChooser(intent, "Share recording"), null)
+        ContextCompat.startActivity(context, Intent.createChooser(intent, context.getString(R.string.share_title)), null)
     }
 
     override fun onCleared() {

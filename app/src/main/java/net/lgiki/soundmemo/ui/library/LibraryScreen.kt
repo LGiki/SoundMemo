@@ -43,8 +43,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.model.Recording
 import net.lgiki.soundmemo.data.model.RecordingSort
 import net.lgiki.soundmemo.util.formatDateTime
@@ -61,7 +63,7 @@ fun LibraryScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val playerState by viewModel.playback.state.collectAsStateWithLifecycle()
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Library") }) },
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.library_title)) }) },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -73,7 +75,7 @@ fun LibraryScreen(
             OutlinedTextField(
                 value = state.query,
                 onValueChange = viewModel::setQuery,
-                label = { Text("Search recordings") },
+                label = { Text(stringResource(R.string.library_search)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -86,8 +88,8 @@ fun LibraryScreen(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text("No recordings yet.", style = MaterialTheme.typography.titleMedium)
-                    TextButton(onClick = onStartRecording) { Text("Start recording") }
+                    Text(stringResource(R.string.library_empty), style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = onStartRecording) { Text(stringResource(R.string.library_empty_action)) }
                 }
             } else {
                 LazyColumn(
@@ -109,7 +111,7 @@ fun LibraryScreen(
                     if (state.deleted.isNotEmpty()) {
                         item {
                             Text(
-                                "Recycle Bin",
+                                stringResource(R.string.library_recycle_bin),
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.padding(top = 16.dp),
                             )
@@ -132,10 +134,15 @@ fun LibraryScreen(
                 ) {
                     ListItem(
                         headlineContent = { Text(current.name) },
-                        supportingContent = { Text(if (playerState.isPlaying) "Playing" else "Paused") },
+                        supportingContent = {
+                            Text(
+                                if (playerState.isPlaying) stringResource(R.string.library_miniplayer_playing)
+                                else stringResource(R.string.library_miniplayer_paused)
+                            )
+                        },
                         leadingContent = {
                             IconButton(onClick = viewModel.playback::toggle) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = "Play or pause current recording")
+                                Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.library_play_pause_desc))
                             }
                         },
                     )
@@ -156,10 +163,19 @@ private fun SortRow(sort: RecordingSort, onSort: (RecordingSort) -> Unit) {
                 onClick = { onSort(value) },
                 shape = SegmentedButtonDefaults.itemShape(index, values.size),
             ) {
-                Text(value.name)
+                Text(sortLabel(value))
             }
         }
     }
+}
+
+@Composable
+private fun sortLabel(sort: RecordingSort): String = when (sort) {
+    RecordingSort.Newest -> stringResource(R.string.sort_newest)
+    RecordingSort.Oldest -> stringResource(R.string.sort_oldest)
+    RecordingSort.Name -> stringResource(R.string.sort_name)
+    RecordingSort.Longest -> stringResource(R.string.sort_longest)
+    RecordingSort.Shortest -> stringResource(R.string.sort_shortest)
 }
 
 @Composable
@@ -181,16 +197,16 @@ private fun RecordingItem(
             },
             leadingContent = {
                 IconButton(onClick = onPlay) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = "Play ${recording.name}")
+                    Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.library_play_desc, recording.name))
                 }
             },
             trailingContent = {
                 IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More actions")
+                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.library_more_actions))
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
-                        text = { Text("Rename") },
+                        text = { Text(stringResource(R.string.library_rename)) },
                         leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                         onClick = {
                             menuOpen = false
@@ -198,7 +214,7 @@ private fun RecordingItem(
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text("Share") },
+                        text = { Text(stringResource(R.string.library_share)) },
                         leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
                         onClick = {
                             menuOpen = false
@@ -206,7 +222,7 @@ private fun RecordingItem(
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete") },
+                        text = { Text(stringResource(R.string.library_delete)) },
                         leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                         onClick = {
                             menuOpen = false
@@ -221,23 +237,23 @@ private fun RecordingItem(
         var name by remember(recording.id) { mutableStateOf(recording.name) }
         AlertDialog(
             onDismissRequest = { renameOpen = false },
-            title = { Text("Rename recording") },
+            title = { Text(stringResource(R.string.library_rename_dialog_title)) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     singleLine = true,
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.library_name_label)) },
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
                     onRename(name)
                     renameOpen = false
-                }) { Text("Save") }
+                }) { Text(stringResource(R.string.library_save)) }
             },
             dismissButton = {
-                TextButton(onClick = { renameOpen = false }) { Text("Cancel") }
+                TextButton(onClick = { renameOpen = false }) { Text(stringResource(R.string.library_cancel)) }
             },
         )
     }
@@ -258,14 +274,14 @@ private fun DeletedRecordingItem(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(recording.name, style = MaterialTheme.typography.titleMedium)
-                Text("Deleted ${recording.deletedAt?.let(::formatDateTime).orEmpty()}", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.library_deleted_prefix, recording.deletedAt?.let(::formatDateTime).orEmpty()), style = MaterialTheme.typography.bodySmall)
             }
             IconButton(onClick = onRestore) {
-                Icon(Icons.Default.Restore, contentDescription = "Restore ${recording.name}")
+                Icon(Icons.Default.Restore, contentDescription = stringResource(R.string.library_restore_desc, recording.name))
             }
             Spacer(Modifier.size(4.dp))
             IconButton(onClick = onDeleteForever) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete ${recording.name} permanently")
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.library_delete_perm_desc, recording.name))
             }
         }
     }

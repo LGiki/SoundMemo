@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">SoundMemo</string>
+
+    <!-- Bottom Navigation -->
+    <string name="nav_recorder">录音机</string>
+    <string name="nav_library">录音库</string>
+    <string name="nav_settings">设置</string>
+
+    <!-- Recorder Screen -->
+    <string name="recorder_title">SoundMemo</string>
+    <string name="recorder_waveform_desc">录音波形可视化</string>
+    <string name="recorder_status_idle">准备录音</string>
+    <string name="recorder_status_recording">录音中</string>
+    <string name="recorder_status_paused">已暂停</string>
+    <string name="recorder_status_saving">保存中</string>
+    <string name="recorder_status_saved">已保存</string>
+    <string name="recorder_status_error">录音错误</string>
+    <string name="recorder_start">开始录音</string>
+    <string name="recorder_pause">暂停录音</string>
+    <string name="recorder_stop_save">停止并保存</string>
+    <string name="recorder_resume">继续录音</string>
+    <string name="recorder_saving_audio">正在保存录音…</string>
+    <string name="recorder_discard">放弃</string>
+    <string name="recorder_saved_message">录音已保存。</string>
+    <string name="recorder_start_failed">无法开始录音。</string>
+
+    <!-- Library Screen -->
+    <string name="library_title">录音库</string>
+    <string name="library_search">搜索录音</string>
+    <string name="library_empty">暂无录音。</string>
+    <string name="library_empty_action">开始录音</string>
+    <string name="library_recycle_bin">回收站</string>
+    <string name="library_miniplayer_playing">播放中</string>
+    <string name="library_miniplayer_paused">已暂停</string>
+    <string name="library_play_pause_desc">播放或暂停当前录音</string>
+    <string name="library_play_desc">播放 %s</string>
+    <string name="library_more_actions">更多操作</string>
+    <string name="library_rename">重命名</string>
+    <string name="library_share">分享</string>
+    <string name="library_delete">删除</string>
+    <string name="library_rename_dialog_title">重命名录音</string>
+    <string name="library_name_label">名称</string>
+    <string name="library_save">保存</string>
+    <string name="library_cancel">取消</string>
+    <string name="library_restore_desc">恢复 %s</string>
+    <string name="library_delete_perm_desc">永久删除 %s</string>
+    <string name="library_deleted_prefix">已删除 %s</string>
+
+    <!-- Sort Labels -->
+    <string name="sort_newest">最新</string>
+    <string name="sort_oldest">最早</string>
+    <string name="sort_name">名称</string>
+    <string name="sort_longest">最长</string>
+    <string name="sort_shortest">最短</string>
+
+    <!-- Player Screen -->
+    <string name="player_title">播放器</string>
+    <string name="player_empty">从录音库中选择一条录音。</string>
+    <string name="player_skip_back">后退 10 秒</string>
+    <string name="player_pause">暂停播放</string>
+    <string name="player_play">播放录音</string>
+    <string name="player_skip_forward">快进 10 秒</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">设置</string>
+    <string name="settings_appearance">外观</string>
+    <string name="settings_recording_section">录音</string>
+    <string name="settings_playback_section">播放</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_privacy">隐私</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_dynamic_color">动态颜色</string>
+    <string name="settings_dynamic_color_desc">在 Android 12 及以上版本使用系统配色</string>
+    <string name="settings_keep_screen_awake">录音时保持屏幕常亮</string>
+    <string name="settings_local_only">仅本地录音</string>
+    <string name="settings_local_only_desc">SoundMemo 无账号、无广告、无分析、无云端上传。</string>
+    <string name="settings_about_app">SoundMemo</string>
+    <string name="settings_about_desc">开源 Android 录音机</string>
+
+    <!-- Language Names -->
+    <string name="lang_system">跟随系统</string>
+    <string name="lang_en">English</string>
+    <string name="lang_zh_cn">简体中文</string>
+    <string name="lang_zh_tw">繁體中文</string>
+
+    <!-- Notification -->
+    <string name="notification_channel_name">录音</string>
+    <string name="notification_channel_desc">SoundMemo 录音控制</string>
+    <string name="notification_title">SoundMemo 正在录音</string>
+    <string name="notification_text_paused">录音已暂停</string>
+    <string name="notification_text_recording">录音进行中</string>
+    <string name="notification_action_resume">继续</string>
+    <string name="notification_action_pause">暂停</string>
+    <string name="notification_action_stop">停止</string>
+
+    <!-- Playback Errors -->
+    <string name="playback_failed">播放失败。</string>
+    <string name="playback_file_missing">音频文件丢失。</string>
+
+    <!-- Share -->
+    <string name="share_title">分享录音</string>
+</resources>

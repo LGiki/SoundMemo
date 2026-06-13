@@ -44,10 +44,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.util.formatDuration
 
@@ -67,7 +69,7 @@ fun RecorderScreen(
         }
     }
     Scaffold(
-        topBar = { TopAppBar(title = { Text("SoundMemo") }) },
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.recorder_title)) }) },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         Column(
@@ -79,6 +81,7 @@ fun RecorderScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Card(modifier = Modifier.fillMaxWidth()) {
+                val waveformDesc = stringResource(R.string.recorder_waveform_desc)
                 Waveform(
                     amplitude = state.amplitude,
                     active = state.status == RecorderStatus.Recording,
@@ -86,7 +89,7 @@ fun RecorderScreen(
                         .fillMaxWidth()
                         .height(220.dp)
                         .padding(20.dp)
-                        .semantics { contentDescription = "Recording waveform visualization" },
+                        .semantics { contentDescription = waveformDesc },
                 )
             }
             Text(
@@ -95,12 +98,12 @@ fun RecorderScreen(
             )
             Text(
                 text = when (state.status) {
-                    RecorderStatus.Idle -> "Ready to record"
-                    RecorderStatus.Recording -> "Recording"
-                    RecorderStatus.Paused -> "Paused"
-                    RecorderStatus.Saving -> "Saving"
-                    RecorderStatus.Saved -> "Saved"
-                    RecorderStatus.Error -> state.message ?: "Recording error"
+                    RecorderStatus.Idle -> stringResource(R.string.recorder_status_idle)
+                    RecorderStatus.Recording -> stringResource(R.string.recorder_status_recording)
+                    RecorderStatus.Paused -> stringResource(R.string.recorder_status_paused)
+                    RecorderStatus.Saving -> stringResource(R.string.recorder_status_saving)
+                    RecorderStatus.Saved -> stringResource(R.string.recorder_status_saved)
+                    RecorderStatus.Error -> state.message ?: stringResource(R.string.recorder_status_error)
                 },
                 style = MaterialTheme.typography.titleMedium,
                 color = if (state.status == RecorderStatus.Error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -114,33 +117,33 @@ fun RecorderScreen(
                             shape = CircleShape,
                             colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.error),
                         ) {
-                            Icon(Icons.Default.Mic, contentDescription = "Start recording", modifier = Modifier.size(40.dp))
+                            Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.recorder_start), modifier = Modifier.size(40.dp))
                         }
                     }
                     RecorderStatus.Recording -> {
                         FilledIconButton(onClick = { viewModel.pause(context) }, modifier = Modifier.size(72.dp)) {
-                            Icon(Icons.Default.Pause, contentDescription = "Pause recording")
+                            Icon(Icons.Default.Pause, contentDescription = stringResource(R.string.recorder_pause))
                         }
                         FilledIconButton(onClick = { viewModel.stop(context) }, modifier = Modifier.size(72.dp)) {
-                            Icon(Icons.Default.Stop, contentDescription = "Stop and save recording")
+                            Icon(Icons.Default.Stop, contentDescription = stringResource(R.string.recorder_stop_save))
                         }
                     }
                     RecorderStatus.Paused -> {
                         FilledIconButton(onClick = { viewModel.resume(context) }, modifier = Modifier.size(72.dp)) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = "Resume recording")
+                            Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.recorder_resume))
                         }
                         FilledIconButton(onClick = { viewModel.stop(context) }, modifier = Modifier.size(72.dp)) {
-                            Icon(Icons.Default.Stop, contentDescription = "Stop and save recording")
+                            Icon(Icons.Default.Stop, contentDescription = stringResource(R.string.recorder_stop_save))
                         }
                     }
-                    RecorderStatus.Saving -> Text("Saving audio...")
+                    RecorderStatus.Saving -> Text(stringResource(R.string.recorder_saving_audio))
                 }
             }
             if (state.status == RecorderStatus.Recording || state.status == RecorderStatus.Paused) {
                 OutlinedButton(onClick = { viewModel.cancel(context) }) {
                     Icon(Icons.Default.Delete, contentDescription = null)
                     Spacer(Modifier.size(8.dp))
-                    Text("Discard")
+                    Text(stringResource(R.string.recorder_discard))
                 }
             }
         }
@@ -175,4 +178,3 @@ private fun Waveform(amplitude: Int, active: Boolean, modifier: Modifier = Modif
         }
     }
 }
-

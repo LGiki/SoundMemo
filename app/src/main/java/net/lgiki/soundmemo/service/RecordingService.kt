@@ -29,6 +29,7 @@ import net.lgiki.soundmemo.SoundMemoApplication
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.RecorderUiState
 import net.lgiki.soundmemo.domain.recorder.RecordingStateHolder
+import net.lgiki.soundmemo.util.wrapWithLocale
 
 class RecordingService : LifecycleService() {
     private var recorder: MediaRecorder? = null
@@ -39,6 +40,11 @@ class RecordingService : LifecycleService() {
     private var ticker: Job? = null
 
     private val container by lazy { (application as SoundMemoApplication).container }
+
+    override fun attachBaseContext(newBase: Context) {
+        val app = newBase.applicationContext as SoundMemoApplication
+        super.attachBaseContext(newBase.wrapWithLocale(app.currentLocale))
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -95,7 +101,7 @@ class RecordingService : LifecycleService() {
                 RecordingStateHolder.update(
                     RecorderUiState(
                         status = RecorderStatus.Error,
-                        message = it.localizedMessage ?: "Recording could not start.",
+                        message = it.localizedMessage ?: getString(R.string.recorder_start_failed),
                     ),
                 )
                 stopSelf()
@@ -146,7 +152,7 @@ class RecordingService : LifecycleService() {
                     sampleRate = settings.sampleRate,
                 )
                 RecordingStateHolder.update(
-                    RecorderUiState(status = RecorderStatus.Saved, elapsedMs = elapsed, lastSavedId = id, message = "Recording saved."),
+                    RecorderUiState(status = RecorderStatus.Saved, elapsedMs = elapsed, lastSavedId = id, message = getString(R.string.recorder_saved_message)),
                 )
             } else {
                 file?.delete()
@@ -194,10 +200,10 @@ class RecordingService : LifecycleService() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Recording",
+            getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Active SoundMemo recording controls"
+            description = getString(R.string.notification_channel_desc)
         }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
@@ -221,18 +227,18 @@ class RecordingService : LifecycleService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val pauseResumeAction = if (status == RecorderStatus.Paused) {
-            NotificationCompat.Action(0, "Resume", commandIntent(ACTION_RESUME, 2))
+            NotificationCompat.Action(0, getString(R.string.notification_action_resume), commandIntent(ACTION_RESUME, 2))
         } else {
-            NotificationCompat.Action(0, "Pause", commandIntent(ACTION_PAUSE, 1))
+            NotificationCompat.Action(0, getString(R.string.notification_action_pause), commandIntent(ACTION_PAUSE, 1))
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("SoundMemo is recording")
-            .setContentText(if (status == RecorderStatus.Paused) "Recording paused" else "Recording in progress")
+            .setContentTitle(getString(R.string.notification_title))
+            .setContentText(if (status == RecorderStatus.Paused) getString(R.string.notification_text_paused) else getString(R.string.notification_text_recording))
             .setOngoing(true)
             .setContentIntent(openIntent)
             .addAction(pauseResumeAction)
-            .addAction(NotificationCompat.Action(0, "Stop", commandIntent(ACTION_STOP, 3)))
+            .addAction(NotificationCompat.Action(0, getString(R.string.notification_action_stop), commandIntent(ACTION_STOP, 3)))
             .build()
     }
 
