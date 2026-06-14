@@ -110,15 +110,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 }
             }
             item {
-                SettingsSection(title = stringResource(R.string.settings_playback_section)) {
-                    PreferenceRow(
-                        headline = stringResource(R.string.settings_playback_speed),
-                        supporting = "${settings.playbackSpeed}x",
-                        onClick = { openDialog = SettingsDialog.PlaybackSpeed },
-                    )
-                }
-            }
-            item {
                 SettingsSection(title = stringResource(R.string.settings_privacy)) {
                     SettingListItem(
                         headline = stringResource(R.string.settings_local_only),
@@ -168,18 +159,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             selected = settings.bitrate,
             onSelect = {
                 viewModel.setBitrate(it)
-                openDialog = null
-            },
-            onDismiss = { openDialog = null },
-        )
-        SettingsDialog.PlaybackSpeed -> SingleChoiceSettingsDialog(
-            title = stringResource(R.string.settings_playback_speed),
-            options = listOf(0.5f, 1f, 1.5f, 2f).map { speed ->
-                SettingsOption(speed, "${speed}x")
-            },
-            selected = settings.playbackSpeed,
-            onSelect = {
-                viewModel.setPlaybackSpeed(it)
                 openDialog = null
             },
             onDismiss = { openDialog = null },
@@ -317,7 +296,6 @@ private enum class SettingsDialog {
     Theme,
     Language,
     Bitrate,
-    PlaybackSpeed,
 }
 
 private data class SettingsOption<T>(

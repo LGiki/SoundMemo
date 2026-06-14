@@ -4,8 +4,8 @@ import android.content.Context
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
 import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -17,10 +17,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import net.lgiki.soundmemo.data.model.Recording
+import net.lgiki.soundmemo.data.settings.SettingsRepository
 
-class PlaybackController(context: Context) {
+class PlaybackController(
+    context: Context,
+    private val settingsRepository: SettingsRepository,
+) {
     private val appContext = context.applicationContext
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scopeJob = SupervisorJob()
+    private val scope = CoroutineScope(scopeJob + Dispatchers.Main.immediate)
     private val player = ExoPlayer.Builder(appContext).build()
     private val mutableState = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = mutableState.asStateFlow()
@@ -51,6 +56,11 @@ class PlaybackController(context: Context) {
                 delay(500)
             }
         }
+        scope.launch {
+            settingsRepository.settings.collect { settings ->
+                applySpeed(settings.playbackSpeed)
+            }
+        }
     }
 
     fun play(recording: Recording) {
@@ -78,8 +88,10 @@ class PlaybackController(context: Context) {
 
     fun setSpeed(speed: Float) {
         val coerced = speed.coerceIn(0.5f, 2f)
-        player.playbackParameters = PlaybackParameters(coerced)
-        mutableState.value = mutableState.value.copy(speed = coerced)
+        applySpeed(coerced)
+        scope.launch {
+            settingsRepository.setPlaybackSpeed(coerced)
+        }
     }
 
     fun stop() {
@@ -88,7 +100,13 @@ class PlaybackController(context: Context) {
     }
 
     fun release() {
+        scopeJob.cancel()
         player.release()
     }
-}
 
+    private fun applySpeed(speed: Float) {
+        val coerced = speed.coerceIn(0.5f, 2f)
+        player.playbackParameters = PlaybackParameters(coerced)
+        mutableState.value = mutableState.value.copy(speed = coerced)
+    }
+}

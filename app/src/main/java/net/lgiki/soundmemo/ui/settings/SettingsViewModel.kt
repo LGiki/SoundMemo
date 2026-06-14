@@ -63,7 +63,6 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     fun setBitrate(value: Int) = viewModelScope.launch { repository.setBitrate(value) }
     fun setKeepScreenAwake(enabled: Boolean) = viewModelScope.launch { repository.setKeepScreenAwake(enabled) }
     fun setRecycleRetentionDays(days: Int) = viewModelScope.launch { repository.setRecycleRetentionDays(days) }
-    fun setPlaybackSpeed(speed: Float) = viewModelScope.launch { repository.setPlaybackSpeed(speed) }
 
     fun setLocale(tag: String) {
         if (settings.value.locale == tag) return

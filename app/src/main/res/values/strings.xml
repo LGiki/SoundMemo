@@ -67,7 +67,6 @@
     <string name="settings_title">Settings</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_recording_section">Recording</string>
-    <string name="settings_playback_section">Playback</string>
     <string name="settings_language">Language</string>
     <string name="settings_privacy">Privacy</string>
     <string name="settings_about">About</string>
@@ -81,7 +80,6 @@
     <string name="settings_bitrate_device_range">Device AAC range: %1$d-%2$d kbps</string>
     <string name="settings_bitrate_common_options">Common AAC options</string>
     <string name="settings_keep_screen_awake">Keep screen awake while recording</string>
-    <string name="settings_playback_speed">Playback speed</string>
     <string name="settings_local_only">Local recordings only</string>
     <string name="settings_local_only_desc">SoundMemo has no account, ads, analytics, or cloud upload.</string>
     <string name="settings_about_app">SoundMemo</string>

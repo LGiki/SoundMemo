@@ -67,7 +67,6 @@
     <string name="settings_title">设置</string>
     <string name="settings_appearance">外观</string>
     <string name="settings_recording_section">录音</string>
-    <string name="settings_playback_section">播放</string>
     <string name="settings_language">语言</string>
     <string name="settings_privacy">隐私</string>
     <string name="settings_about">关于</string>
@@ -81,7 +80,6 @@
     <string name="settings_bitrate_device_range">设备 AAC 范围：%1$d-%2$d kbps</string>
     <string name="settings_bitrate_common_options">常用 AAC 选项</string>
     <string name="settings_keep_screen_awake">录音时保持屏幕常亮</string>
-    <string name="settings_playback_speed">播放速度</string>
     <string name="settings_local_only">仅本地录音</string>
     <string name="settings_local_only_desc">SoundMemo 无账号、无广告、无分析、无云端上传。</string>
     <string name="settings_about_app">SoundMemo</string>

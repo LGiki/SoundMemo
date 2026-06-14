@@ -3,6 +3,7 @@ package net.lgiki.soundmemo.ui.player
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -166,8 +167,11 @@ private fun TransportControls(
 
 @Composable
 private fun SpeedRow(currentSpeed: Float, onSpeed: (Float) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        listOf(0.5f, 1f, 1.5f, 2f).forEach { speed ->
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f).forEach { speed ->
             FilterChip(
                 selected = currentSpeed == speed,
                 onClick = { onSpeed(speed) },

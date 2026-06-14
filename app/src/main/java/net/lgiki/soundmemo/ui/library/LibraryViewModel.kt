@@ -27,7 +27,7 @@ data class LibraryUiState(
 class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() {
     private val query = MutableStateFlow("")
     private val sort = MutableStateFlow(RecordingSort.Newest)
-    val playback = PlaybackController(container.appContext)
+    val playback = PlaybackController(container.appContext, container.settingsRepository)
 
     val state = combine(
         container.recordingRepository.activeRecordings,
