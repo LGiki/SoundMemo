@@ -71,6 +71,7 @@
     <string name="settings_language">語言</string>
     <string name="settings_privacy">隱私</string>
     <string name="settings_about">關於</string>
+    <string name="settings_theme">主題</string>
     <string name="settings_theme_system">跟隨系統</string>
     <string name="settings_theme_light">淺色</string>
     <string name="settings_theme_dark">深色</string>
@@ -80,6 +81,7 @@
     <string name="settings_bitrate_device_range">裝置 AAC 範圍：%1$d-%2$d kbps</string>
     <string name="settings_bitrate_common_options">常用 AAC 選項</string>
     <string name="settings_keep_screen_awake">錄音時保持螢幕常亮</string>
+    <string name="settings_playback_speed">播放速度</string>
     <string name="settings_local_only">僅本機錄音</string>
     <string name="settings_local_only_desc">SoundMemo 無帳號、無廣告、無分析、無雲端上傳。</string>
     <string name="settings_about_app">SoundMemo</string>
