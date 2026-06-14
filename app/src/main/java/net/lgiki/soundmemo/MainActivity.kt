@@ -172,7 +172,16 @@ private fun SoundMemoApp(
                 )
             }
             composable("player") {
-                PlayerScreen(libraryViewModel.playback)
+                PlayerScreen(
+                    controller = libraryViewModel.playback,
+                    onBack = {
+                        if (!navController.navigateUp()) {
+                            navController.navigate("library") {
+                                launchSingleTop = true
+                            }
+                        }
+                    },
+                )
             }
             composable("settings") {
                 SettingsScreen(settingsViewModel)

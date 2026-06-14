@@ -57,6 +57,7 @@
 
     <!-- Player Screen -->
     <string name="player_title">Player</string>
+    <string name="player_back">Back</string>
     <string name="player_empty">Select a recording from the Library.</string>
     <string name="player_skip_back">Skip back 10 seconds</string>
     <string name="player_pause">Pause playback</string>

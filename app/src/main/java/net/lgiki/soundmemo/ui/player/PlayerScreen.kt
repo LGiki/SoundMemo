@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -45,9 +46,26 @@ import net.lgiki.soundmemo.util.formatFileSize
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlayerScreen(controller: PlaybackController) {
+fun PlayerScreen(
+    controller: PlaybackController,
+    onBack: () -> Unit,
+) {
     val state by controller.state.collectAsStateWithLifecycle()
-    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.player_title)) }) }) { padding ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.player_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.player_back),
+                        )
+                    }
+                },
+            )
+        },
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
