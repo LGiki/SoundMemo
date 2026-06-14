@@ -34,6 +34,7 @@ import net.lgiki.soundmemo.data.settings.ThemeMode
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val bitrateOptions by viewModel.bitrateOptions.collectAsStateWithLifecycle()
     Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.settings_title)) }) }) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -78,8 +79,20 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             }
             item {
                 SettingsSection(title = stringResource(R.string.settings_recording_section)) {
+                    Text(
+                        text = stringResource(R.string.settings_bitrate),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = bitrateOptions.range?.let { range ->
+                            stringResource(R.string.settings_bitrate_device_range, range.min / 1000, range.max / 1000)
+                        } ?: stringResource(R.string.settings_bitrate_common_options),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     ChipRow {
-                        listOf(96_000, 128_000, 192_000).forEach { bitrate ->
+                        bitrateOptions.values.forEach { bitrate ->
                             FilterChip(
                                 selected = settings.bitrate == bitrate,
                                 onClick = { viewModel.setBitrate(bitrate) },

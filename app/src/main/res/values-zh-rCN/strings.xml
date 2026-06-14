@@ -76,6 +76,9 @@
     <string name="settings_theme_dark">深色</string>
     <string name="settings_dynamic_color">动态颜色</string>
     <string name="settings_dynamic_color_desc">在 Android 12 及以上版本使用系统配色</string>
+    <string name="settings_bitrate">比特率</string>
+    <string name="settings_bitrate_device_range">设备 AAC 范围：%1$d-%2$d kbps</string>
+    <string name="settings_bitrate_common_options">常用 AAC 选项</string>
     <string name="settings_keep_screen_awake">录音时保持屏幕常亮</string>
     <string name="settings_local_only">仅本地录音</string>
     <string name="settings_local_only_desc">SoundMemo 无账号、无广告、无分析、无云端上传。</string>

@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.lgiki.soundmemo.data.settings.SettingsRepository
 import net.lgiki.soundmemo.data.settings.ThemeMode
+import net.lgiki.soundmemo.domain.recorder.AacBitrateOptions
+import net.lgiki.soundmemo.domain.recorder.BitrateOptions
 
 class SettingsViewModel(private val repository: SettingsRepository) : ViewModel() {
     val settings = repository.settings.stateIn(
@@ -18,8 +20,22 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
         net.lgiki.soundmemo.data.settings.AppSettings(),
     )
 
+    private val _bitrateOptions = MutableStateFlow(AacBitrateOptions.load())
+    val bitrateOptions: StateFlow<BitrateOptions> = _bitrateOptions.asStateFlow()
+
     private val _localeChanged = MutableStateFlow<String?>(null)
     val localeChanged: StateFlow<String?> = _localeChanged.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            repository.settings.collect { appSettings ->
+                val options = _bitrateOptions.value.values
+                if (appSettings.bitrate !in options) {
+                    repository.setBitrate(AacBitrateOptions.closestSupported(appSettings.bitrate, options))
+                }
+            }
+        }
+    }
 
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch { repository.setThemeMode(mode) }
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { repository.setDynamicColor(enabled) }
