@@ -81,11 +81,7 @@ fun SoundMemoTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val darkTheme = when (settings.themeMode) {
-        ThemeMode.System -> isSystemInDarkTheme()
-        ThemeMode.Light -> false
-        ThemeMode.Dark -> true
-    }
+    val darkTheme = shouldUseDarkTheme(settings)
     val colors = if (settings.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else {
@@ -96,4 +92,11 @@ fun SoundMemoTheme(
         typography = MaterialTheme.typography,
         content = content,
     )
+}
+
+@Composable
+fun shouldUseDarkTheme(settings: AppSettings): Boolean = when (settings.themeMode) {
+    ThemeMode.System -> isSystemInDarkTheme()
+    ThemeMode.Light -> false
+    ThemeMode.Dark -> true
 }

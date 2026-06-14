@@ -1,8 +1,6 @@
 package net.lgiki.soundmemo.ui.library
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -24,12 +21,17 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -37,7 +39,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -48,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -157,10 +159,10 @@ private fun SortRow(sort: RecordingSort, onSort: (RecordingSort) -> Unit) {
 
 @Composable
 private fun EmptyLibrary(onStartRecording: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(
+    Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(
             modifier = Modifier
@@ -294,21 +296,19 @@ private fun RecordingRow(
     leading: (@Composable () -> Unit)? = null,
     trailing: @Composable () -> Unit,
 ) {
-    Surface(
+    val containerColor = if (muted) {
+        MaterialTheme.colorScheme.surfaceContainerLow
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerLowest
+    }
+    Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = if (muted) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surfaceContainerLowest,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.outlinedCardColors(containerColor = containerColor),
+        border = CardDefaults.outlinedCardBorder(),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, top = 10.dp, end = 8.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            leading?.invoke()
-            Column(modifier = Modifier.weight(1f)) {
+        ListItem(
+            leadingContent = leading,
+            headlineContent = {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
@@ -316,6 +316,8 @@ private fun RecordingRow(
                     overflow = TextOverflow.Ellipsis,
                     color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 )
+            },
+            supportingContent = {
                 Text(
                     text = metadata,
                     style = MaterialTheme.typography.bodySmall,
@@ -323,11 +325,16 @@ private fun RecordingRow(
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                trailing()
-            }
-        }
+            },
+            trailingContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    trailing()
+                }
+            },
+            colors = ListItemDefaults.colors(
+                containerColor = Color.Transparent,
+            ),
+        )
     }
 }
 
@@ -338,31 +345,35 @@ private fun MiniPlayer(
     onOpenPlayer: () -> Unit,
     onToggle: () -> Unit,
 ) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onOpenPlayer),
+    Card(
+        onClick = onOpenPlayer,
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
     ) {
-        Row(
-            modifier = Modifier.padding(start = 12.dp, top = 10.dp, end = 14.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) {
-                IconButton(onClick = onToggle, modifier = Modifier.size(44.dp)) {
+        ListItem(
+            leadingContent = {
+                FilledIconButton(onClick = onToggle) {
                     Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.library_play_pause_desc))
                 }
-            }
-            Column(modifier = Modifier.weight(1f)) {
+            },
+            headlineContent = {
                 Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            },
+            supportingContent = {
                 Text(
                     if (isPlaying) stringResource(R.string.library_miniplayer_playing) else stringResource(R.string.library_miniplayer_paused),
                     style = MaterialTheme.typography.bodySmall,
                 )
-            }
-        }
+            },
+            colors = ListItemDefaults.colors(
+                containerColor = Color.Transparent,
+                headlineColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                supportingColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ),
+        )
     }
 }

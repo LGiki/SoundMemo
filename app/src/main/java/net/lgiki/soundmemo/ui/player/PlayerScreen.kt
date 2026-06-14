@@ -9,23 +9,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -62,10 +61,10 @@ fun PlayerScreen(controller: PlaybackController) {
                 EmptyPlayer(modifier = Modifier.fillMaxSize())
             } else {
                 RecordingHeader(recording = recording, modifier = Modifier.fillMaxWidth())
-                Surface(
+                Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp),
@@ -101,10 +100,10 @@ fun PlayerScreen(controller: PlaybackController) {
 
 @Composable
 private fun EmptyPlayer(modifier: Modifier = Modifier) {
-    Surface(
+    Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
@@ -147,14 +146,11 @@ private fun TransportControls(
         IconButton(onClick = onSkipBack, modifier = Modifier.size(52.dp)) {
             Icon(Icons.Default.Replay10, contentDescription = stringResource(R.string.player_skip_back))
         }
-        FilledIconButton(
+        FloatingActionButton(
             onClick = onToggle,
             modifier = Modifier.size(72.dp),
-            shape = CircleShape,
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
         ) {
             Icon(
                 if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,

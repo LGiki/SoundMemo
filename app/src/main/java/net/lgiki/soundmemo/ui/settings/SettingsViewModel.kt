@@ -2,12 +2,14 @@ package net.lgiki.soundmemo.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.lgiki.soundmemo.data.settings.SettingsRepository
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.domain.recorder.AacBitrateOptions
@@ -20,20 +22,39 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
         net.lgiki.soundmemo.data.settings.AppSettings(),
     )
 
-    private val _bitrateOptions = MutableStateFlow(AacBitrateOptions.load())
+    private val _bitrateOptions = MutableStateFlow(
+        BitrateOptions(
+            values = AacBitrateOptions.fallbackValues,
+            range = null,
+        ),
+    )
     val bitrateOptions: StateFlow<BitrateOptions> = _bitrateOptions.asStateFlow()
+    private var bitrateOptionsReady = false
 
     private val _localeChanged = MutableStateFlow<String?>(null)
     val localeChanged: StateFlow<String?> = _localeChanged.asStateFlow()
 
     init {
         viewModelScope.launch {
+            val options = withContext(Dispatchers.Default) {
+                AacBitrateOptions.load()
+            }
+            _bitrateOptions.value = options
+            bitrateOptionsReady = true
+            ensureSupportedBitrate(settings.value.bitrate, options.values)
+        }
+        viewModelScope.launch {
             repository.settings.collect { appSettings ->
-                val options = _bitrateOptions.value.values
-                if (appSettings.bitrate !in options) {
-                    repository.setBitrate(AacBitrateOptions.closestSupported(appSettings.bitrate, options))
+                if (bitrateOptionsReady) {
+                    ensureSupportedBitrate(appSettings.bitrate, _bitrateOptions.value.values)
                 }
             }
+        }
+    }
+
+    private suspend fun ensureSupportedBitrate(bitrate: Int, options: List<Int>) {
+        if (bitrate !in options) {
+            repository.setBitrate(AacBitrateOptions.closestSupported(bitrate, options))
         }
     }
 

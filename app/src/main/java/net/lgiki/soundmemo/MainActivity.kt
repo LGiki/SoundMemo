@@ -15,17 +15,21 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -42,6 +46,7 @@ import net.lgiki.soundmemo.ui.recorder.RecorderViewModel
 import net.lgiki.soundmemo.ui.settings.SettingsScreen
 import net.lgiki.soundmemo.ui.settings.SettingsViewModel
 import net.lgiki.soundmemo.ui.theme.SoundMemoTheme
+import net.lgiki.soundmemo.ui.theme.shouldUseDarkTheme
 import net.lgiki.soundmemo.util.wrapWithLocale
 
 class MainActivity : ComponentActivity() {
@@ -57,6 +62,7 @@ class MainActivity : ComponentActivity() {
             val factory = SoundMemoViewModelFactory(container)
             val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
             val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
+            val darkTheme = shouldUseDarkTheme(settings)
             LaunchedEffect(settings.keepScreenAwake) {
                 if (settings.keepScreenAwake) {
                     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -75,6 +81,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
             SoundMemoTheme(settings = settings) {
+                val systemBarColor = MaterialTheme.colorScheme.surface.toArgb()
+                SideEffect {
+                    window.statusBarColor = systemBarColor
+                    window.navigationBarColor = systemBarColor
+                    WindowCompat.getInsetsController(window, window.decorView).apply {
+                        isAppearanceLightStatusBars = !darkTheme
+                        isAppearanceLightNavigationBars = !darkTheme
+                    }
+                }
                 SoundMemoApp(
                     factory = factory,
                     settingsViewModel = settingsViewModel,

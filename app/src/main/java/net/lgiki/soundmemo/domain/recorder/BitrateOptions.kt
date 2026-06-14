@@ -3,6 +3,9 @@ package net.lgiki.soundmemo.domain.recorder
 import android.media.MediaCodecInfo
 import android.media.MediaCodecList
 import android.media.MediaFormat
+import android.util.Log
+
+private const val TAG = "AacBitrateOptions"
 
 data class BitrateRange(
     val min: Int,
@@ -43,7 +46,7 @@ object AacBitrateOptions {
     }
 
     private fun readDeviceAacBitrateRange(): BitrateRange? {
-        return runCatching {
+        return try {
             val codecs = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
             codecs
                 .asSequence()
@@ -57,6 +60,9 @@ object AacBitrateOptions {
                         max = maxOf(acc.max, range.max),
                     )
                 }
-        }.getOrNull()
+        } catch (exception: Exception) {
+            Log.w(TAG, "Failed to query AAC bitrate range", exception)
+            null
+        }
     }
 }

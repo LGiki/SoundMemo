@@ -12,12 +12,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -46,13 +50,15 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         ) {
             item {
                 SettingsSection(title = stringResource(R.string.settings_appearance)) {
-                    ChipRow {
-                        ThemeMode.entries.forEach { mode ->
-                            FilterChip(
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        ThemeMode.entries.forEachIndexed { index, mode ->
+                            SegmentedButton(
                                 selected = settings.themeMode == mode,
                                 onClick = { viewModel.setThemeMode(mode) },
-                                label = { Text(themeModeLabel(mode)) },
-                            )
+                                shape = SegmentedButtonDefaults.itemShape(index, ThemeMode.entries.size),
+                            ) {
+                                Text(themeModeLabel(mode))
+                            }
                         }
                     }
                     SettingListItem(
@@ -153,10 +159,10 @@ private fun SettingsSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 4.dp),
         )
-        Surface(
+        Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         ) {
             Column(
                 modifier = Modifier.padding(12.dp),
