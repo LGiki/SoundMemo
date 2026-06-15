@@ -1,5 +1,6 @@
 package net.lgiki.soundmemo.ui.recorder
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
@@ -28,10 +28,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFloatingActionButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -44,6 +42,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -52,10 +52,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
+import net.lgiki.soundmemo.domain.recorder.WAVEFORM_SAMPLE_COUNT
 import net.lgiki.soundmemo.util.formatDuration
 
-private const val MAX_PCM_AMPLITUDE = 32767f
-private const val MIN_INDICATOR_LEVEL = 0.02f
+private const val MIN_WAVEFORM_LEVEL = 0.08f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +89,7 @@ fun RecorderScreen(
                 elapsedMs = state.elapsedMs,
                 status = state.status,
                 message = state.message,
-                amplitude = state.amplitude,
+                waveform = state.waveform,
                 modifier = Modifier.fillMaxWidth(),
             )
             RecorderControls(
@@ -109,7 +109,7 @@ private fun RecordingStatusPanel(
     elapsedMs: Long,
     status: RecorderStatus,
     message: String?,
-    amplitude: Int,
+    waveform: List<Float>,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -128,8 +128,8 @@ private fun RecordingStatusPanel(
                 style = MaterialTheme.typography.displaySmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            InputLevelIndicator(
-                amplitude = amplitude,
+            RecordingWaveform(
+                waveform = waveform,
                 active = status == RecorderStatus.Recording,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -282,30 +282,67 @@ private fun StopButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun InputLevelIndicator(amplitude: Int, active: Boolean, modifier: Modifier = Modifier) {
-    val level = (amplitude / MAX_PCM_AMPLITUDE).coerceIn(MIN_INDICATOR_LEVEL, 1f)
+private fun RecordingWaveform(
+    waveform: List<Float>,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+) {
     val waveformDesc = stringResource(R.string.recorder_waveform_desc)
-    Column(
-        modifier = modifier.semantics { contentDescription = waveformDesc },
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            LinearProgressIndicator(
-                progress = { if (active) level else MIN_INDICATOR_LEVEL },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(8.dp),
-                color = if (active) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                trackColor = ProgressIndicatorDefaults.linearTrackColor,
-                strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
+    val samples = remember(waveform) {
+        if (waveform.size >= WAVEFORM_SAMPLE_COUNT) {
+            waveform.takeLast(WAVEFORM_SAMPLE_COUNT)
+        } else {
+            List(WAVEFORM_SAMPLE_COUNT - waveform.size) { 0f } + waveform
+        }
+    }
+    val barColor = if (active) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f)
+    }
+    val restingBarColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
+    val centerLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.54f)
+
+    Canvas(modifier = modifier.semantics { contentDescription = waveformDesc }) {
+        val centerY = size.height / 2f
+        val barCount = samples.size.coerceAtLeast(1)
+        val preferredGap = 3.dp.toPx()
+        val preferredMinStroke = 2.dp.toPx()
+        val maxStroke = 6.dp.toPx()
+        val minimumContentWidth = barCount * preferredMinStroke + (barCount - 1) * preferredGap
+        val gap = if (size.width >= minimumContentWidth) {
+            preferredGap
+        } else {
+            (size.width * 0.45f / (barCount - 1).coerceAtLeast(1)).coerceIn(0f, preferredGap)
+        }
+        val strokeWidth = ((size.width - gap * (barCount - 1)) / barCount)
+            .coerceIn(0f, maxStroke)
+        val step = strokeWidth + gap
+        val contentWidth = step * (barCount - 1) + strokeWidth
+        val startX = (size.width - contentWidth).coerceAtLeast(0f) / 2f + strokeWidth / 2f
+
+        drawLine(
+            color = centerLineColor,
+            start = Offset(0f, centerY),
+            end = Offset(size.width, centerY),
+            strokeWidth = 1.dp.toPx(),
+            cap = StrokeCap.Round,
+        )
+
+        samples.forEachIndexed { index, sample ->
+            val visibleLevel = sample.coerceIn(0f, 1f)
+            val barHeight = if (visibleLevel > 0f) {
+                (size.height * visibleLevel.coerceAtLeast(MIN_WAVEFORM_LEVEL)).coerceAtMost(size.height)
+            } else {
+                6.dp.toPx()
+            }
+            val x = startX + index * step
+            drawLine(
+                color = if (visibleLevel > 0f) barColor else restingBarColor,
+                start = Offset(x, centerY - barHeight / 2f),
+                end = Offset(x, centerY + barHeight / 2f),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round,
             )
         }
     }

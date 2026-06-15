@@ -19,6 +19,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import java.io.File
+import kotlin.math.sqrt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -31,6 +32,7 @@ import net.lgiki.soundmemo.domain.recorder.RecordingLocation
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.RecorderUiState
 import net.lgiki.soundmemo.domain.recorder.RecordingStateHolder
+import net.lgiki.soundmemo.domain.recorder.WAVEFORM_SAMPLE_COUNT
 import net.lgiki.soundmemo.util.wrapWithLocale
 
 class RecordingService : LifecycleService() {
@@ -210,17 +212,29 @@ class RecordingService : LifecycleService() {
         ticker?.cancel()
         ticker = lifecycleScope.launch {
             while (true) {
-                val status = RecordingStateHolder.state.value.status
+                val current = RecordingStateHolder.state.value
+                val status = current.status
                 val amplitude = if (status == RecorderStatus.Recording) runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0) else 0
+                val waveform = if (status == RecorderStatus.Recording) {
+                    (current.waveform + normalizedWaveformSample(amplitude)).takeLast(WAVEFORM_SAMPLE_COUNT)
+                } else {
+                    current.waveform
+                }
                 RecordingStateHolder.update(
-                    RecordingStateHolder.state.value.copy(
+                    current.copy(
                         elapsedMs = currentElapsed(),
                         amplitude = amplitude,
+                        waveform = waveform,
                     ),
                 )
                 delay(250)
             }
         }
+    }
+
+    private fun normalizedWaveformSample(amplitude: Int): Float {
+        val linear = (amplitude / MAX_PCM_AMPLITUDE).coerceIn(0f, 1f)
+        return sqrt(linear).coerceIn(0f, 1f)
     }
 
     private fun currentElapsed(): Long {
@@ -298,6 +312,7 @@ class RecordingService : LifecycleService() {
     companion object {
         private const val CHANNEL_ID = "recording"
         private const val NOTIFICATION_ID = 1001
+        private const val MAX_PCM_AMPLITUDE = 32767f
         const val ACTION_START = "net.lgiki.soundmemo.START_RECORDING"
         const val ACTION_PAUSE = "net.lgiki.soundmemo.PAUSE_RECORDING"
         const val ACTION_RESUME = "net.lgiki.soundmemo.RESUME_RECORDING"
