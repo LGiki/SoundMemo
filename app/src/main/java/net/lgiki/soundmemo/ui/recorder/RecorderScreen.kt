@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -90,7 +89,9 @@ fun RecorderScreen(
                 status = state.status,
                 message = state.message,
                 waveform = state.waveform,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
             )
             RecorderControls(
                 status = state.status,
@@ -118,14 +119,16 @@ private fun RecordingStatusPanel(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             StatusPill(status = status, message = message)
             Text(
                 text = formatDuration(elapsedMs),
-                style = MaterialTheme.typography.displaySmall,
+                style = MaterialTheme.typography.displayMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             RecordingWaveform(
@@ -133,7 +136,7 @@ private fun RecordingStatusPanel(
                 active = status == RecorderStatus.Recording,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(72.dp),
+                    .weight(1f),
             )
         }
     }
