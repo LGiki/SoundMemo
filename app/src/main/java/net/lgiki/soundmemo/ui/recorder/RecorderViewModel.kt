@@ -6,8 +6,12 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import net.lgiki.soundmemo.SoundMemoContainer
+import net.lgiki.soundmemo.domain.recorder.RecordingLocation
+import net.lgiki.soundmemo.domain.recorder.RecordingLocationProvider
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.RecorderUiState
 import net.lgiki.soundmemo.domain.recorder.RecordingStateHolder
@@ -18,8 +22,20 @@ class RecorderViewModel(
 ) : ViewModel() {
     val state: StateFlow<RecorderUiState> = RecordingStateHolder.state
 
-    fun start(context: Context) {
-        ContextCompat.startForegroundService(context, RecordingService.startIntent(context, RecordingService.ACTION_START))
+    fun start(context: Context, location: RecordingLocation? = null) {
+        ContextCompat.startForegroundService(context, RecordingService.startIntent(context, RecordingService.ACTION_START, location))
+    }
+
+    fun startWithOptionalLocation(context: Context, recordLocation: Boolean) {
+        val appContext = context.applicationContext
+        viewModelScope.launch {
+            val location = if (recordLocation) {
+                RecordingLocationProvider.currentLocation(appContext)
+            } else {
+                null
+            }
+            start(appContext, location)
+        }
     }
 
     fun pause(context: Context) {
@@ -38,12 +54,12 @@ class RecorderViewModel(
         context.startService(RecordingService.startIntent(context, RecordingService.ACTION_CANCEL))
     }
 
-    fun requiredPermissions(): Array<String> =
+    fun requiredPermissions(): Array<String> = buildList {
+        add(Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            arrayOf(Manifest.permission.RECORD_AUDIO)
+            add(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }.toTypedArray()
 
     fun resetSavedMessage() {
         val current = state.value
@@ -52,4 +68,3 @@ class RecorderViewModel(
         }
     }
 }
-

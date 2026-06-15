@@ -18,6 +18,10 @@ data class Recording(
     val isDeleted: Boolean = false,
     val deletedAt: Long? = null,
     val note: String = "",
+    val locationLatitude: Double? = null,
+    val locationLongitude: Double? = null,
+    val locationAccuracyMeters: Float? = null,
+    val locationCapturedAt: Long? = null,
 )
 
 enum class RecordingSort {
@@ -27,4 +31,3 @@ enum class RecordingSort {
     Shortest,
     Name,
 }
-

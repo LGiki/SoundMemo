@@ -47,6 +47,7 @@
     <string name="library_restore_desc">Restore %s</string>
     <string name="library_delete_perm_desc">Delete %s permanently</string>
     <string name="library_deleted_prefix">Deleted %s</string>
+    <string name="recording_location_coordinates">Location: %1$s</string>
 
     <!-- Sort Labels -->
     <string name="sort_newest">Newest</string>
@@ -81,6 +82,10 @@
     <string name="settings_bitrate_device_range">Device AAC range: %1$d-%2$d kbps</string>
     <string name="settings_bitrate_common_options">Common AAC options</string>
     <string name="settings_keep_screen_awake">Keep screen awake while recording</string>
+    <string name="settings_record_location">Save recording location</string>
+    <string name="settings_record_location_desc">Save coordinates in SoundMemo for new recordings.</string>
+    <string name="settings_write_location_to_media_file">Write location to audio file</string>
+    <string name="settings_write_location_to_media_file_desc">Include coordinates in the M4A metadata when sharing or exporting recordings.</string>
     <string name="settings_local_only">Local recordings only</string>
     <string name="settings_local_only_desc">SoundMemo has no account, ads, analytics, or cloud upload.</string>
     <string name="settings_about_app">SoundMemo</string>

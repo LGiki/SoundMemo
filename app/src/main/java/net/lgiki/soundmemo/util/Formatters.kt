@@ -1,5 +1,6 @@
 package net.lgiki.soundmemo.util
 
+import net.lgiki.soundmemo.data.model.Recording
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -26,3 +27,14 @@ fun formatFileSize(bytes: Long): String {
 fun formatDateTime(epochMs: Long): String =
     DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(epochMs))
 
+fun formatCoordinates(latitude: Double, longitude: Double): String? {
+    if (!latitude.isFinite() || !longitude.isFinite()) return null
+    if (latitude !in -90.0..90.0 || longitude !in -180.0..180.0) return null
+    return String.format(Locale.US, "%.5f, %.5f", latitude, longitude)
+}
+
+fun formatRecordingLocation(recording: Recording): String? {
+    val latitude = recording.locationLatitude ?: return null
+    val longitude = recording.locationLongitude ?: return null
+    return formatCoordinates(latitude, longitude)
+}

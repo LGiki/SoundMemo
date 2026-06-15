@@ -6,6 +6,8 @@ data class AppSettings(
     val bitrate: Int = 128_000,
     val sampleRate: Int = 44_100,
     val keepScreenAwake: Boolean = true,
+    val recordLocation: Boolean = false,
+    val writeLocationToMediaFile: Boolean = false,
     val recycleRetentionDays: Int = 30,
     val playbackSpeed: Float = 1f,
     val locale: String = "system",
@@ -16,4 +18,3 @@ enum class ThemeMode {
     Light,
     Dark,
 }
-

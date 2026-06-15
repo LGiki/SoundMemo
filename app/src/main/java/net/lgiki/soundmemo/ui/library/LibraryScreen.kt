@@ -61,6 +61,7 @@ import net.lgiki.soundmemo.data.model.RecordingSort
 import net.lgiki.soundmemo.util.formatDateTime
 import net.lgiki.soundmemo.util.formatDuration
 import net.lgiki.soundmemo.util.formatFileSize
+import net.lgiki.soundmemo.util.formatRecordingLocation
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -200,9 +201,15 @@ private fun RecordingItem(
     val context = LocalContext.current
     var menuOpen by remember { mutableStateOf(false) }
     var renameOpen by remember { mutableStateOf(false) }
+    val location = formatRecordingLocation(recording)
     RecordingRow(
         title = recording.name,
-        metadata = "${formatDateTime(recording.createdAt)} - ${formatDuration(recording.durationMs)} - ${formatFileSize(recording.fileSizeBytes)}",
+        metadata = listOfNotNull(
+            formatDateTime(recording.createdAt),
+            formatDuration(recording.durationMs),
+            formatFileSize(recording.fileSizeBytes),
+            location?.let { stringResource(R.string.recording_location_coordinates, it) },
+        ).joinToString(" - "),
         leading = {
             FilledTonalIconButton(onClick = onPlay, modifier = Modifier.size(44.dp)) {
                 Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.library_play_desc, recording.name))

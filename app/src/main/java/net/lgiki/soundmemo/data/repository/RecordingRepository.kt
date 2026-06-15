@@ -2,6 +2,7 @@ package net.lgiki.soundmemo.data.repository
 
 import net.lgiki.soundmemo.data.db.RecordingDao
 import net.lgiki.soundmemo.data.model.Recording
+import net.lgiki.soundmemo.domain.recorder.RecordingLocation
 import java.io.File
 import kotlinx.coroutines.flow.Flow
 
@@ -14,6 +15,7 @@ class RecordingRepository(private val dao: RecordingDao) {
         durationMs: Long,
         bitrate: Int,
         sampleRate: Int,
+        location: RecordingLocation?,
     ): Long = dao.insert(
         Recording(
             name = file.nameWithoutExtension.replace('_', ' '),
@@ -22,6 +24,10 @@ class RecordingRepository(private val dao: RecordingDao) {
             fileSizeBytes = file.length(),
             bitrate = bitrate,
             sampleRate = sampleRate,
+            locationLatitude = location?.latitude,
+            locationLongitude = location?.longitude,
+            locationAccuracyMeters = location?.accuracyMeters,
+            locationCapturedAt = location?.capturedAt,
         ),
     )
 

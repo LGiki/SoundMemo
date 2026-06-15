@@ -1,5 +1,9 @@
 package net.lgiki.soundmemo.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,14 +29,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.settings.ThemeMode
@@ -43,6 +50,40 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val bitrateOptions by viewModel.bitrateOptions.collectAsStateWithLifecycle()
     var openDialog by remember { mutableStateOf<SettingsDialog?>(null) }
+    val context = LocalContext.current
+    fun hasLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        if (
+            result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
+            hasLocationPermission()
+        ) {
+            viewModel.setRecordLocation(true)
+        }
+    }
+    fun toggleRecordLocation() {
+        if (settings.recordLocation) {
+            viewModel.setRecordLocation(false)
+        } else if (hasLocationPermission()) {
+            viewModel.setRecordLocation(true)
+        } else {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                ),
+            )
+        }
+    }
+    LaunchedEffect(settings.recordLocation) {
+        if (settings.recordLocation && !hasLocationPermission()) {
+            viewModel.setRecordLocation(false)
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
@@ -111,6 +152,35 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             }
             item {
                 SettingsSection(title = stringResource(R.string.settings_privacy)) {
+                    SettingListItem(
+                        headline = stringResource(R.string.settings_record_location),
+                        supporting = stringResource(R.string.settings_record_location_desc),
+                        onClick = ::toggleRecordLocation,
+                        trailing = {
+                            Switch(
+                                checked = settings.recordLocation,
+                                onCheckedChange = { toggleRecordLocation() },
+                            )
+                        },
+                    )
+                    PreferenceDivider()
+                    SettingListItem(
+                        headline = stringResource(R.string.settings_write_location_to_media_file),
+                        supporting = stringResource(R.string.settings_write_location_to_media_file_desc),
+                        onClick = {
+                            if (settings.recordLocation) {
+                                viewModel.setWriteLocationToMediaFile(!settings.writeLocationToMediaFile)
+                            }
+                        },
+                        trailing = {
+                            Switch(
+                                checked = settings.writeLocationToMediaFile,
+                                onCheckedChange = viewModel::setWriteLocationToMediaFile,
+                                enabled = settings.recordLocation,
+                            )
+                        },
+                    )
+                    PreferenceDivider()
                     SettingListItem(
                         headline = stringResource(R.string.settings_local_only),
                         supporting = stringResource(R.string.settings_local_only_desc),

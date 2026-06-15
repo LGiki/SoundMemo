@@ -147,20 +147,30 @@ private fun SoundMemoApp(
         ) {
             composable("recorder") {
                 val context = LocalContext.current
+                val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
+                fun hasPermission(permission: String): Boolean =
+                    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+                fun startRecordingWithOptionalLocation() {
+                    recorderViewModel.startWithOptionalLocation(context, settings.recordLocation)
+                }
                 val permissionLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestMultiplePermissions(),
                 ) { result ->
-                    if (result[Manifest.permission.RECORD_AUDIO] == true) {
-                        recorderViewModel.start(context)
+                    val audioGranted = hasPermission(Manifest.permission.RECORD_AUDIO) ||
+                        result[Manifest.permission.RECORD_AUDIO] == true
+                    if (audioGranted) {
+                        startRecordingWithOptionalLocation()
                     }
                 }
                 RecorderScreen(
                     viewModel = recorderViewModel,
                     onRecordRequest = {
-                        val missing = recorderViewModel.requiredPermissions().filter {
-                            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+                        val missing = recorderViewModel.requiredPermissions().filter { !hasPermission(it) }
+                        if (missing.isEmpty()) {
+                            startRecordingWithOptionalLocation()
+                        } else {
+                            permissionLauncher.launch(missing.toTypedArray())
                         }
-                        if (missing.isEmpty()) recorderViewModel.start(context) else permissionLauncher.launch(missing.toTypedArray())
                     },
                 )
             }

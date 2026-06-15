@@ -47,6 +47,7 @@
     <string name="library_restore_desc">還原 %s</string>
     <string name="library_delete_perm_desc">永久刪除 %s</string>
     <string name="library_deleted_prefix">已刪除 %s</string>
+    <string name="recording_location_coordinates">位置：%1$s</string>
 
     <!-- Sort Labels -->
     <string name="sort_newest">最新</string>
@@ -81,6 +82,10 @@
     <string name="settings_bitrate_device_range">裝置 AAC 範圍：%1$d-%2$d kbps</string>
     <string name="settings_bitrate_common_options">常用 AAC 選項</string>
     <string name="settings_keep_screen_awake">錄音時保持螢幕常亮</string>
+    <string name="settings_record_location">儲存錄音位置</string>
+    <string name="settings_record_location_desc">將新錄音的座標儲存在 SoundMemo 中。</string>
+    <string name="settings_write_location_to_media_file">將位置寫入音訊檔案</string>
+    <string name="settings_write_location_to_media_file_desc">分享或匯出錄音時，在 M4A 中繼資料中包含座標。</string>
     <string name="settings_local_only">僅本機錄音</string>
     <string name="settings_local_only_desc">SoundMemo 無帳號、無廣告、無分析、無雲端上傳。</string>
     <string name="settings_about_app">SoundMemo</string>

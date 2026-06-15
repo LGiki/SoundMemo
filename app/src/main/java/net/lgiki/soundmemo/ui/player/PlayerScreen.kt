@@ -43,6 +43,7 @@ import net.lgiki.soundmemo.domain.player.PlaybackController
 import net.lgiki.soundmemo.util.formatDateTime
 import net.lgiki.soundmemo.util.formatDuration
 import net.lgiki.soundmemo.util.formatFileSize
+import net.lgiki.soundmemo.util.formatRecordingLocation
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -151,6 +152,13 @@ private fun RecordingHeader(recording: Recording, modifier: Modifier = Modifier)
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        formatRecordingLocation(recording)?.let { location ->
+            Text(
+                stringResource(R.string.recording_location_coordinates, location),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
