@@ -67,7 +67,7 @@ class RecordingService : LifecycleService() {
             ACTION_STOP -> stopRecording(save = true)
             ACTION_CANCEL -> stopRecording(save = false)
         }
-        return Service.START_STICKY
+        return Service.START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent): IBinder? {
@@ -171,9 +171,7 @@ class RecordingService : LifecycleService() {
             val elapsed = currentElapsed()
             val location = recordingLocation
             try {
-                runCatching {
-                    activeRecorder.stop()
-                }
+                activeRecorder.stop()
                 cleanupRecorder()
                 if (save && file != null && file.exists() && file.length() > 0) {
                     val settings = container.settingsRepository.settings.first()
@@ -193,6 +191,7 @@ class RecordingService : LifecycleService() {
                 }
             } catch (exception: Exception) {
                 if (exception is CancellationException) throw exception
+                cleanupRecorder()
                 file?.delete()
                 RecordingStateHolder.update(
                     RecorderUiState(

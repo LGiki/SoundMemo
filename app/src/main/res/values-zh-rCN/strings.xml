@@ -86,8 +86,8 @@
     <string name="settings_record_location_desc">将新录音的坐标保存在 SoundMemo 中。</string>
     <string name="settings_write_location_to_media_file">将位置写入音频文件</string>
     <string name="settings_write_location_to_media_file_desc">分享或导出录音时，在 M4A 元数据中包含坐标。</string>
-    <string name="settings_local_only">仅本地录音</string>
-    <string name="settings_local_only_desc">SoundMemo 无账号、无广告、无分析、无云端上传。</string>
+    <string name="settings_local_only">本地优先录音</string>
+    <string name="settings_local_only_desc">SoundMemo 无账号、无广告、无分析，也不会在应用内上传到云端。如果系统设置中启用了 Android 系统备份或设备迁移，应用数据可能会被包含在内。</string>
     <string name="settings_about_app">SoundMemo</string>
     <string name="settings_about_desc">开源 Android 录音机</string>
 

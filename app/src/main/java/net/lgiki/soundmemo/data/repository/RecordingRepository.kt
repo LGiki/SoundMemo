@@ -18,7 +18,7 @@ class RecordingRepository(private val dao: RecordingDao) {
         location: RecordingLocation?,
     ): Long = dao.insert(
         Recording(
-            name = file.nameWithoutExtension.replace('_', ' '),
+            name = file.toRecordingName(),
             filePath = file.absolutePath,
             durationMs = durationMs,
             fileSizeBytes = file.length(),
@@ -51,23 +51,40 @@ class RecordingRepository(private val dao: RecordingDao) {
         }
     }
 
-    suspend fun deletePermanently(id: Long, deleteFile: (String) -> Unit) {
+    suspend fun deletePermanently(id: Long, deleteFile: (String) -> Boolean) {
         dao.getById(id)?.let {
-            deleteFile(it.filePath)
-            dao.deletePermanently(id)
+            if (deleteFile(it.filePath)) {
+                dao.deletePermanently(id)
+            }
         }
     }
 
-    suspend fun emptyRecycleBin(deleteFile: (String) -> Unit) {
-        dao.deletedRecordingsOnce().forEach { deleteFile(it.filePath) }
-        dao.emptyRecycleBin()
+    suspend fun emptyRecycleBin(deleteFile: (String) -> Boolean) {
+        dao.deletedRecordingsOnce().forEach { recording ->
+            if (deleteFile(recording.filePath)) {
+                dao.deletePermanently(recording.id)
+            }
+        }
     }
 
-    suspend fun purgeExpired(retentionDays: Int, deleteFile: (String) -> Unit) {
+    suspend fun purgeExpired(retentionDays: Int, deleteFile: (String) -> Boolean) {
         val cutoff = System.currentTimeMillis() - retentionDays.coerceAtLeast(1) * 24L * 60L * 60L * 1000L
         dao.deletedBefore(cutoff).forEach { recording ->
-            deleteFile(recording.filePath)
-            dao.deletePermanently(recording.id)
+            if (deleteFile(recording.filePath)) {
+                dao.deletePermanently(recording.id)
+            }
         }
     }
 }
+
+private fun File.toRecordingName(): String {
+    val name = nameWithoutExtension
+    val displayName = if (name.matches(GENERATED_RECORDING_NAME)) {
+        name.substringBeforeLast('_')
+    } else {
+        name
+    }
+    return displayName.replace('_', ' ')
+}
+
+private val GENERATED_RECORDING_NAME = Regex("""SoundMemo_\d{8}_\d{6}_\d{3}_[A-Za-z0-9-]+""")

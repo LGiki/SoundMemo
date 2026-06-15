@@ -86,8 +86,8 @@
     <string name="settings_record_location_desc">Save coordinates in SoundMemo for new recordings.</string>
     <string name="settings_write_location_to_media_file">Write location to audio file</string>
     <string name="settings_write_location_to_media_file_desc">Include coordinates in the M4A metadata when sharing or exporting recordings.</string>
-    <string name="settings_local_only">Local recordings only</string>
-    <string name="settings_local_only_desc">SoundMemo has no account, ads, analytics, or cloud upload.</string>
+    <string name="settings_local_only">Local-first recordings</string>
+    <string name="settings_local_only_desc">SoundMemo has no account, ads, analytics, or in-app cloud upload. Android system backup or device transfer may include app data if enabled in system settings.</string>
     <string name="settings_about_app">SoundMemo</string>
     <string name="settings_about_desc">Open source Android voice recorder</string>
 

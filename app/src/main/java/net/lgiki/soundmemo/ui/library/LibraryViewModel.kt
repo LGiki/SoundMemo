@@ -9,6 +9,8 @@ import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.lgiki.soundmemo.R
@@ -28,6 +30,17 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
     private val query = MutableStateFlow("")
     private val sort = MutableStateFlow(RecordingSort.Newest)
     val playback = PlaybackController(container.appContext, container.settingsRepository)
+
+    init {
+        viewModelScope.launch {
+            container.settingsRepository.settings
+                .map { it.recycleRetentionDays }
+                .distinctUntilChanged()
+                .collect { retentionDays ->
+                    container.recordingRepository.purgeExpired(retentionDays, container.recordingStorage::deleteFile)
+                }
+        }
+    }
 
     val state = combine(
         container.recordingRepository.activeRecordings,
@@ -70,7 +83,7 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
 
     fun deletePermanently(id: Long) {
         viewModelScope.launch {
-            container.recordingRepository.deletePermanently(id) { File(it).delete() }
+            container.recordingRepository.deletePermanently(id, container.recordingStorage::deleteFile)
         }
     }
 

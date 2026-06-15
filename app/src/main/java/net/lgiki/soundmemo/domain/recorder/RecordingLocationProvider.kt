@@ -29,8 +29,8 @@ object RecordingLocationProvider {
         val manager = appContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
         return withContext(Dispatchers.IO) {
             withTimeoutOrNull(LOCATION_TIMEOUT_MS) {
-                currentLocation(appContext, manager) ?: lastKnownLocation(appContext, manager)
-            }
+                currentLocation(appContext, manager)
+            } ?: lastKnownLocation(appContext, manager)
         }
     }
 
