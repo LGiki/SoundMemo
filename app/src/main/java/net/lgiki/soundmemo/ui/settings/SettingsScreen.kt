@@ -17,11 +17,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -43,6 +45,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.settings.ThemeMode
+import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -141,6 +144,12 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         onClick = { openDialog = SettingsDialog.Bitrate },
                     )
                     PreferenceDivider()
+                    PreferenceRow(
+                        headline = stringResource(R.string.settings_file_name_template),
+                        supporting = settings.recordingNameTemplate,
+                        onClick = { openDialog = SettingsDialog.FileNameTemplate },
+                    )
+                    PreferenceDivider()
                     SettingListItem(
                         headline = stringResource(R.string.settings_keep_screen_awake),
                         onClick = { viewModel.setKeepScreenAwake(!settings.keepScreenAwake) },
@@ -229,6 +238,18 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             selected = settings.bitrate,
             onSelect = {
                 viewModel.setBitrate(it)
+                openDialog = null
+            },
+            onDismiss = { openDialog = null },
+        )
+        SettingsDialog.FileNameTemplate -> FileNameTemplateDialog(
+            initialTemplate = settings.recordingNameTemplate,
+            onSave = {
+                viewModel.setRecordingNameTemplate(it)
+                openDialog = null
+            },
+            onReset = {
+                viewModel.resetRecordingNameTemplate()
                 openDialog = null
             },
             onDismiss = { openDialog = null },
@@ -348,6 +369,75 @@ private fun <T> SingleChoiceSettingsDialog(
 }
 
 @Composable
+private fun FileNameTemplateDialog(
+    initialTemplate: String,
+    onSave: (String) -> Unit,
+    onReset: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var template by remember(initialTemplate) { mutableStateOf(initialTemplate) }
+    val previewNow = remember { System.currentTimeMillis() }
+    val unknownTokens = remember(template) { RecordingNameTemplate.unknownTokens(template) }
+    val isValid = unknownTokens.isEmpty()
+    val preview = remember(template, previewNow) {
+        RecordingNameTemplate.preview(template, now = previewNow)
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_file_name_template)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = template,
+                    onValueChange = { template = it },
+                    label = { Text(stringResource(R.string.settings_file_name_template_label)) },
+                    singleLine = true,
+                    isError = !isValid,
+                    supportingText = {
+                        Text(
+                            if (isValid) {
+                                stringResource(R.string.settings_file_name_template_tokens)
+                            } else {
+                                stringResource(
+                                    R.string.settings_file_name_template_unknown_tokens,
+                                    unknownTokens.joinToString(", ") { "{$it}" },
+                                )
+                            },
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (isValid) {
+                    Text(
+                        text = stringResource(R.string.settings_file_name_template_preview, preview),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSave(template) },
+                enabled = isValid,
+            ) {
+                Text(stringResource(R.string.library_save))
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onReset) {
+                    Text(stringResource(R.string.settings_file_name_template_reset))
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.library_cancel))
+                }
+            }
+        },
+    )
+}
+
+@Composable
 private fun themeModeLabel(mode: ThemeMode): String = when (mode) {
     ThemeMode.System -> stringResource(R.string.settings_theme_system)
     ThemeMode.Light -> stringResource(R.string.settings_theme_light)
@@ -366,6 +456,7 @@ private enum class SettingsDialog {
     Theme,
     Language,
     Bitrate,
+    FileNameTemplate,
 }
 
 private data class SettingsOption<T>(

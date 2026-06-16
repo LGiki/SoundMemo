@@ -78,6 +78,12 @@
     <string name="settings_bitrate">位元率</string>
     <string name="settings_bitrate_device_range">裝置 AAC 範圍：%1$d-%2$d kbps</string>
     <string name="settings_bitrate_common_options">常用 AAC 選項</string>
+    <string name="settings_file_name_template">預設檔案名稱</string>
+    <string name="settings_file_name_template_label">範本</string>
+    <string name="settings_file_name_template_tokens">可用標記：{date}、{time}、{timestamp}、{id}</string>
+    <string name="settings_file_name_template_unknown_tokens">未知標記：%1$s</string>
+    <string name="settings_file_name_template_preview">預覽：%1$s.m4a</string>
+    <string name="settings_file_name_template_reset">重設</string>
     <string name="settings_keep_screen_awake">錄音時保持螢幕常亮</string>
     <string name="settings_record_location">儲存錄音位置</string>
     <string name="settings_record_location_desc">將新錄音的座標儲存在 SoundMemo 中。</string>

@@ -78,6 +78,12 @@
     <string name="settings_bitrate">Bitrate</string>
     <string name="settings_bitrate_device_range">Device AAC range: %1$d-%2$d kbps</string>
     <string name="settings_bitrate_common_options">Common AAC options</string>
+    <string name="settings_file_name_template">Default file name</string>
+    <string name="settings_file_name_template_label">Template</string>
+    <string name="settings_file_name_template_tokens">Tokens: {date}, {time}, {timestamp}, {id}</string>
+    <string name="settings_file_name_template_unknown_tokens">Unknown tokens: %1$s</string>
+    <string name="settings_file_name_template_preview">Preview: %1$s.m4a</string>
+    <string name="settings_file_name_template_reset">Reset</string>
     <string name="settings_keep_screen_awake">Keep screen awake while recording</string>
     <string name="settings_record_location">Save recording location</string>
     <string name="settings_record_location_desc">Save coordinates in SoundMemo for new recordings.</string>

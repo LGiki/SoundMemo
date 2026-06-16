@@ -1,10 +1,13 @@
 package net.lgiki.soundmemo.data.settings
 
+import net.lgiki.soundmemo.data.storage.DEFAULT_RECORDING_NAME_TEMPLATE
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.System,
     val dynamicColor: Boolean = true,
     val bitrate: Int = 128_000,
     val sampleRate: Int = 44_100,
+    val recordingNameTemplate: String = DEFAULT_RECORDING_NAME_TEMPLATE,
     val keepScreenAwake: Boolean = true,
     val recordLocation: Boolean = false,
     val writeLocationToMediaFile: Boolean = false,

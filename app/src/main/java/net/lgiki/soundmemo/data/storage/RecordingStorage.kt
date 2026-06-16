@@ -3,9 +3,6 @@ package net.lgiki.soundmemo.data.storage
 import android.content.Context
 import androidx.core.content.FileProvider
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.UUID
 
 class RecordingStorage(private val context: Context) {
@@ -13,11 +10,16 @@ class RecordingStorage(private val context: Context) {
         get() = File(context.filesDir, "recordings").apply { mkdirs() }
 
     fun createOutputFile(
+        template: String = DEFAULT_RECORDING_NAME_TEMPLATE,
         now: Long = System.currentTimeMillis(),
         uniqueSuffix: String = UUID.randomUUID().toString(),
     ): File {
-        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date(now))
-        return File(recordingsDir, "SoundMemo_${stamp}_${uniqueSuffix.take(8)}.m4a")
+        val generatedName = RecordingNameTemplate.generate(template, now, uniqueSuffix)
+        return createOutputFile(generatedName)
+    }
+
+    fun createOutputFile(generatedName: GeneratedRecordingName): File {
+        return File(recordingsDir, generatedName.fileName)
     }
 
     fun displayNameFor(file: File): String {

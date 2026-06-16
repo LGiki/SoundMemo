@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.lgiki.soundmemo.data.settings.SettingsRepository
 import net.lgiki.soundmemo.data.settings.ThemeMode
+import net.lgiki.soundmemo.data.storage.DEFAULT_RECORDING_NAME_TEMPLATE
 import net.lgiki.soundmemo.domain.recorder.AacBitrateOptions
 import net.lgiki.soundmemo.domain.recorder.BitrateOptions
 
@@ -61,6 +62,8 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch { repository.setThemeMode(mode) }
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { repository.setDynamicColor(enabled) }
     fun setBitrate(value: Int) = viewModelScope.launch { repository.setBitrate(value) }
+    fun setRecordingNameTemplate(template: String) = viewModelScope.launch { repository.setRecordingNameTemplate(template) }
+    fun resetRecordingNameTemplate() = viewModelScope.launch { repository.setRecordingNameTemplate(DEFAULT_RECORDING_NAME_TEMPLATE) }
     fun setKeepScreenAwake(enabled: Boolean) = viewModelScope.launch { repository.setKeepScreenAwake(enabled) }
     fun setRecordLocation(enabled: Boolean) = viewModelScope.launch { repository.setRecordLocation(enabled) }
     fun setWriteLocationToMediaFile(enabled: Boolean) = viewModelScope.launch { repository.setWriteLocationToMediaFile(enabled) }

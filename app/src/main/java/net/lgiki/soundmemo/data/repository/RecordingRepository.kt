@@ -12,13 +12,14 @@ class RecordingRepository(private val dao: RecordingDao) {
 
     suspend fun addFromFile(
         file: File,
+        name: String = file.toRecordingName(),
         durationMs: Long,
         bitrate: Int,
         sampleRate: Int,
         location: RecordingLocation?,
     ): Long = dao.insert(
         Recording(
-            name = file.toRecordingName(),
+            name = name.trim().ifBlank { file.toRecordingName() },
             filePath = file.absolutePath,
             durationMs = durationMs,
             fileSizeBytes = file.length(),

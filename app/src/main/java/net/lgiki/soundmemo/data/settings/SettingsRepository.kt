@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import net.lgiki.soundmemo.data.storage.DEFAULT_RECORDING_NAME_TEMPLATE
 
 private val Context.settingsDataStore by preferencesDataStore("soundmemo_settings")
 
@@ -21,6 +22,7 @@ class SettingsRepository(context: Context) {
             dynamicColor = prefs[DYNAMIC_COLOR] ?: true,
             bitrate = prefs[BITRATE] ?: 128_000,
             sampleRate = prefs[SAMPLE_RATE] ?: 44_100,
+            recordingNameTemplate = prefs[RECORDING_NAME_TEMPLATE] ?: DEFAULT_RECORDING_NAME_TEMPLATE,
             keepScreenAwake = prefs[KEEP_SCREEN_AWAKE] ?: true,
             recordLocation = prefs[RECORD_LOCATION] ?: false,
             writeLocationToMediaFile = prefs[WRITE_LOCATION_TO_MEDIA_FILE] ?: false,
@@ -40,6 +42,10 @@ class SettingsRepository(context: Context) {
 
     suspend fun setBitrate(value: Int) {
         dataStore.edit { it[BITRATE] = value }
+    }
+
+    suspend fun setRecordingNameTemplate(template: String) {
+        dataStore.edit { it[RECORDING_NAME_TEMPLATE] = template.trim().ifBlank { DEFAULT_RECORDING_NAME_TEMPLATE } }
     }
 
     suspend fun setKeepScreenAwake(enabled: Boolean) {
@@ -78,6 +84,7 @@ class SettingsRepository(context: Context) {
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val BITRATE = intPreferencesKey("bitrate")
         val SAMPLE_RATE = intPreferencesKey("sample_rate")
+        val RECORDING_NAME_TEMPLATE = stringPreferencesKey("recording_name_template")
         val KEEP_SCREEN_AWAKE = booleanPreferencesKey("keep_screen_awake")
         val RECORD_LOCATION = booleanPreferencesKey("record_location")
         val WRITE_LOCATION_TO_MEDIA_FILE = booleanPreferencesKey("write_location_to_media_file")

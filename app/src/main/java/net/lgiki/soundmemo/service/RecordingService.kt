@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import net.lgiki.soundmemo.MainActivity
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.SoundMemoApplication
+import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
 import net.lgiki.soundmemo.domain.recorder.RecordingLocation
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.RecorderUiState
@@ -38,6 +39,7 @@ import net.lgiki.soundmemo.util.wrapWithLocale
 class RecordingService : LifecycleService() {
     private var recorder: MediaRecorder? = null
     private var outputFile: File? = null
+    private var outputDisplayName: String? = null
     private var recordingLocation: RecordingLocation? = null
     private var isStarting = false
     private var isStopping = false
@@ -84,7 +86,8 @@ class RecordingService : LifecycleService() {
             var started = false
             runCatching {
                 val settings = container.settingsRepository.settings.first()
-                val createdFile = container.recordingStorage.createOutputFile()
+                val generatedName = RecordingNameTemplate.generate(settings.recordingNameTemplate)
+                val createdFile = container.recordingStorage.createOutputFile(generatedName)
                 val createdRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     MediaRecorder(this@RecordingService)
                 } else {
@@ -95,6 +98,7 @@ class RecordingService : LifecycleService() {
                 mediaRecorder = createdRecorder
                 recorder = createdRecorder
                 outputFile = createdFile
+                outputDisplayName = generatedName.displayName
                 recordingLocation = location
                 createdRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
                 createdRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
@@ -168,6 +172,7 @@ class RecordingService : LifecycleService() {
         ticker?.cancel()
         lifecycleScope.launch {
             val file = outputFile
+            val displayName = outputDisplayName
             val elapsed = currentElapsed()
             val location = recordingLocation
             try {
@@ -177,6 +182,7 @@ class RecordingService : LifecycleService() {
                     val settings = container.settingsRepository.settings.first()
                     val id = container.recordingRepository.addFromFile(
                         file = file,
+                        name = displayName.orEmpty(),
                         durationMs = elapsed,
                         bitrate = settings.bitrate,
                         sampleRate = settings.sampleRate,
@@ -246,6 +252,7 @@ class RecordingService : LifecycleService() {
         runCatching { recorder?.release() }
         recorder = null
         outputFile = null
+        outputDisplayName = null
         recordingLocation = null
         isStarting = false
         startedAt = 0L
