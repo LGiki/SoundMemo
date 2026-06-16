@@ -40,7 +40,6 @@ import androidx.navigation.compose.rememberNavController
 import net.lgiki.soundmemo.ui.SoundMemoViewModelFactory
 import net.lgiki.soundmemo.ui.library.LibraryScreen
 import net.lgiki.soundmemo.ui.library.LibraryViewModel
-import net.lgiki.soundmemo.ui.player.PlayerScreen
 import net.lgiki.soundmemo.ui.recorder.RecorderScreen
 import net.lgiki.soundmemo.ui.recorder.RecorderViewModel
 import net.lgiki.soundmemo.ui.settings.SettingsScreen
@@ -177,20 +176,7 @@ private fun SoundMemoApp(
             composable("library") {
                 LibraryScreen(
                     viewModel = libraryViewModel,
-                    onOpenPlayer = { navController.navigate("player") },
                     onStartRecording = { navController.navigate("recorder") },
-                )
-            }
-            composable("player") {
-                PlayerScreen(
-                    controller = libraryViewModel.playback,
-                    onBack = {
-                        if (!navController.navigateUp()) {
-                            navController.navigate("library") {
-                                launchSingleTop = true
-                            }
-                        }
-                    },
                 )
             }
             composable("settings") {

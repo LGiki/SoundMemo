@@ -2,7 +2,9 @@ package net.lgiki.soundmemo.ui.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,8 +17,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
@@ -26,8 +31,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -39,6 +44,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -58,6 +65,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.model.Recording
 import net.lgiki.soundmemo.data.model.RecordingSort
+import net.lgiki.soundmemo.domain.player.PlayerUiState
 import net.lgiki.soundmemo.util.formatDateTime
 import net.lgiki.soundmemo.util.formatDuration
 import net.lgiki.soundmemo.util.formatFileSize
@@ -67,7 +75,6 @@ import net.lgiki.soundmemo.util.formatRecordingLocation
 @Composable
 fun LibraryScreen(
     viewModel: LibraryViewModel,
-    onOpenPlayer: () -> Unit,
     onStartRecording: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -100,15 +107,30 @@ fun LibraryScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(state.recordings, key = { it.id }) { recording ->
+                        val isSelected = playerState.recording?.id == recording.id
                         RecordingItem(
                             recording = recording,
+                            playerState = playerState.takeIf { isSelected },
                             onPlay = {
-                                viewModel.play(recording)
-                                onOpenPlayer()
+                                if (isSelected) {
+                                    viewModel.playback.toggle()
+                                } else {
+                                    viewModel.play(recording)
+                                }
                             },
                             onRename = { viewModel.rename(recording.id, it) },
                             onShare = { viewModel.share(it, recording) },
-                            onDelete = { viewModel.delete(recording.id) },
+                            onDelete = {
+                                if (isSelected) {
+                                    viewModel.playback.stop()
+                                }
+                                viewModel.delete(recording.id)
+                            },
+                            onSeek = viewModel.playback::seekTo,
+                            onSkipBack = { viewModel.playback.skipBy(-10_000) },
+                            onToggle = viewModel.playback::toggle,
+                            onSkipForward = { viewModel.playback.skipBy(10_000) },
+                            onSpeed = viewModel.playback::setSpeed,
                         )
                     }
                     if (state.deleted.isNotEmpty()) {
@@ -128,14 +150,6 @@ fun LibraryScreen(
                         }
                     }
                 }
-            }
-            playerState.recording?.let { current ->
-                MiniPlayer(
-                    name = current.name,
-                    isPlaying = playerState.isPlaying,
-                    onOpenPlayer = onOpenPlayer,
-                    onToggle = viewModel.playback::toggle,
-                )
             }
         }
     }
@@ -193,15 +207,22 @@ private fun sortLabel(sort: RecordingSort): String = when (sort) {
 @Composable
 private fun RecordingItem(
     recording: Recording,
+    playerState: PlayerUiState?,
     onPlay: () -> Unit,
     onRename: (String) -> Unit,
     onShare: (android.content.Context) -> Unit,
     onDelete: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onSkipBack: () -> Unit,
+    onToggle: () -> Unit,
+    onSkipForward: () -> Unit,
+    onSpeed: (Float) -> Unit,
 ) {
     val context = LocalContext.current
     var menuOpen by remember { mutableStateOf(false) }
     var renameOpen by remember { mutableStateOf(false) }
     val location = formatRecordingLocation(recording)
+    val isPlaying = playerState?.isPlaying == true
     RecordingRow(
         title = recording.name,
         metadata = listOfNotNull(
@@ -210,9 +231,17 @@ private fun RecordingItem(
             formatFileSize(recording.fileSizeBytes),
             location?.let { stringResource(R.string.recording_location_coordinates, it) },
         ).joinToString(" - "),
+        onClick = onPlay,
         leading = {
             FilledTonalIconButton(onClick = onPlay, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.library_play_desc, recording.name))
+                Icon(
+                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isPlaying) {
+                        stringResource(R.string.player_pause)
+                    } else {
+                        stringResource(R.string.library_play_desc, recording.name)
+                    },
+                )
             }
         },
         trailing = {
@@ -243,6 +272,19 @@ private fun RecordingItem(
                         menuOpen = false
                         onDelete()
                     },
+                )
+            }
+        },
+        expandedContent = {
+            playerState?.let {
+                InlinePlaybackPanel(
+                    state = it,
+                    fallbackDurationMs = recording.durationMs,
+                    onSeek = onSeek,
+                    onSkipBack = onSkipBack,
+                    onToggle = onToggle,
+                    onSkipForward = onSkipForward,
+                    onSpeed = onSpeed,
                 )
             }
         },
@@ -300,87 +342,184 @@ private fun RecordingRow(
     metadata: String,
     modifier: Modifier = Modifier,
     muted: Boolean = false,
+    onClick: (() -> Unit)? = null,
     leading: (@Composable () -> Unit)? = null,
     trailing: @Composable () -> Unit,
+    expandedContent: @Composable () -> Unit = {},
 ) {
     val containerColor = if (muted) {
         MaterialTheme.colorScheme.surfaceContainerLow
     } else {
         MaterialTheme.colorScheme.surfaceContainerLowest
     }
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.outlinedCardColors(containerColor = containerColor),
-        border = CardDefaults.outlinedCardBorder(),
-    ) {
-        ListItem(
-            leadingContent = leading,
-            headlineContent = {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                )
-            },
-            supportingContent = {
-                Text(
-                    text = metadata,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            trailingContent = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    trailing()
-                }
-            },
-            colors = ListItemDefaults.colors(
-                containerColor = Color.Transparent,
-            ),
+    val content: @Composable ColumnScope.() -> Unit = {
+        Column {
+            ListItem(
+                leadingContent = leading,
+                headlineContent = {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = metadata,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        trailing()
+                    }
+                },
+                colors = ListItemDefaults.colors(
+                    containerColor = Color.Transparent,
+                ),
+            )
+            expandedContent()
+        }
+    }
+    if (onClick == null) {
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            colors = CardDefaults.outlinedCardColors(containerColor = containerColor),
+            border = CardDefaults.outlinedCardBorder(),
+            content = content,
+        )
+    } else {
+        Card(
+            onClick = onClick,
+            modifier = modifier.fillMaxWidth(),
+            colors = CardDefaults.outlinedCardColors(containerColor = containerColor),
+            border = CardDefaults.outlinedCardBorder(),
+            content = content,
         )
     }
 }
 
 @Composable
-private fun MiniPlayer(
-    name: String,
-    isPlaying: Boolean,
-    onOpenPlayer: () -> Unit,
+private fun InlinePlaybackPanel(
+    state: PlayerUiState,
+    fallbackDurationMs: Long,
+    onSeek: (Long) -> Unit,
+    onSkipBack: () -> Unit,
     onToggle: () -> Unit,
+    onSkipForward: () -> Unit,
+    onSpeed: (Float) -> Unit,
 ) {
-    Card(
-        onClick = onOpenPlayer,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        ),
+    val durationMs = (state.durationMs.takeIf { it > 0 } ?: fallbackDurationMs).coerceAtLeast(1L)
+    val positionMs = state.positionMs.coerceIn(0L, durationMs)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        ListItem(
-            leadingContent = {
-                FilledIconButton(onClick = onToggle) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.library_play_pause_desc))
-                }
-            },
-            headlineContent = {
-                Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            },
-            supportingContent = {
-                Text(
-                    if (isPlaying) stringResource(R.string.library_miniplayer_playing) else stringResource(R.string.library_miniplayer_paused),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            },
-            colors = ListItemDefaults.colors(
-                containerColor = Color.Transparent,
-                headlineColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                supportingColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ),
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f))
+        Slider(
+            value = positionMs.toFloat(),
+            onValueChange = { onSeek(it.toLong()) },
+            valueRange = 0f..durationMs.toFloat(),
+            modifier = Modifier.fillMaxWidth(),
         )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(formatDuration(positionMs), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(formatDuration(durationMs), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        TransportControls(
+            isPlaying = state.isPlaying,
+            onSkipBack = onSkipBack,
+            onToggle = onToggle,
+            onSkipForward = onSkipForward,
+        )
+        SpeedMenu(currentSpeed = state.speed, onSpeed = onSpeed)
+        state.error?.let {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            ) {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransportControls(
+    isPlaying: Boolean,
+    onSkipBack: () -> Unit,
+    onToggle: () -> Unit,
+    onSkipForward: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FilledTonalIconButton(onClick = onSkipBack, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Default.Replay10, contentDescription = stringResource(R.string.player_skip_back))
+        }
+        Surface(
+            onClick = onToggle,
+            modifier = Modifier.size(58.dp),
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+        ) {
+            Icon(
+                if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                contentDescription = if (isPlaying) stringResource(R.string.player_pause) else stringResource(R.string.player_play),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+            )
+        }
+        FilledTonalIconButton(onClick = onSkipForward, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Default.Forward10, contentDescription = stringResource(R.string.player_skip_forward))
+        }
+    }
+}
+
+@Composable
+private fun SpeedMenu(currentSpeed: Float, onSpeed: (Float) -> Unit) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val speedLabel = "${currentSpeed}x"
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Box {
+            TextButton(onClick = { menuOpen = true }) {
+                Text(speedLabel)
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f).forEach { speed ->
+                    val label = "${speed}x"
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            menuOpen = false
+                            onSpeed(speed)
+                        },
+                    )
+                }
+            }
+        }
     }
 }

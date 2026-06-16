@@ -56,10 +56,7 @@
     <string name="sort_longest">最长</string>
     <string name="sort_shortest">最短</string>
 
-    <!-- Player Screen -->
-    <string name="player_title">播放器</string>
-    <string name="player_back">返回</string>
-    <string name="player_empty">从录音库中选择一条录音。</string>
+    <!-- Player Controls -->
     <string name="player_skip_back">后退 10 秒</string>
     <string name="player_pause">暂停播放</string>
     <string name="player_play">播放录音</string>

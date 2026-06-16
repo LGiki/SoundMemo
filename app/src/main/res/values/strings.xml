@@ -56,10 +56,7 @@
     <string name="sort_longest">Longest</string>
     <string name="sort_shortest">Shortest</string>
 
-    <!-- Player Screen -->
-    <string name="player_title">Player</string>
-    <string name="player_back">Back</string>
-    <string name="player_empty">Select a recording from the Library.</string>
+    <!-- Player Controls -->
     <string name="player_skip_back">Skip back 10 seconds</string>
     <string name="player_pause">Pause playback</string>
     <string name="player_play">Play recording</string>
