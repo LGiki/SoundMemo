@@ -75,7 +75,14 @@ class PlaybackController(
     }
 
     fun toggle() {
-        if (player.isPlaying) player.pause() else player.play()
+        if (player.isPlaying) {
+            player.pause()
+        } else {
+            if (player.playbackState == Player.STATE_ENDED) {
+                player.seekTo(0L)
+            }
+            player.play()
+        }
     }
 
     fun seekTo(positionMs: Long) {
