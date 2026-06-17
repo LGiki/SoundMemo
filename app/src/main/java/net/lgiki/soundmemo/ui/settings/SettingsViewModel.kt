@@ -68,6 +68,8 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     fun setRecordLocation(enabled: Boolean) = viewModelScope.launch { repository.setRecordLocation(enabled) }
     fun setWriteLocationToMediaFile(enabled: Boolean) = viewModelScope.launch { repository.setWriteLocationToMediaFile(enabled) }
     fun setRecycleRetentionDays(days: Int) = viewModelScope.launch { repository.setRecycleRetentionDays(days) }
+    fun setRewindSeconds(seconds: Int) = viewModelScope.launch { repository.setRewindSeconds(seconds) }
+    fun setForwardSeconds(seconds: Int) = viewModelScope.launch { repository.setForwardSeconds(seconds) }
 
     fun setLocale(tag: String) {
         if (settings.value.locale == tag) return

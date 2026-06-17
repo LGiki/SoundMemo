@@ -13,6 +13,8 @@ data class AppSettings(
     val writeLocationToMediaFile: Boolean = false,
     val recycleRetentionDays: Int = 30,
     val playbackSpeed: Float = 1f,
+    val rewindSeconds: Int = 10,
+    val forwardSeconds: Int = 10,
     val locale: String = "system",
 )
 

@@ -57,15 +57,17 @@
     <string name="sort_shortest">最短</string>
 
     <!-- Player Controls -->
-    <string name="player_skip_back">後退 10 秒</string>
+    <string name="player_skip_back">後退 %1$d 秒</string>
     <string name="player_pause">暫停播放</string>
     <string name="player_play">播放錄音</string>
-    <string name="player_skip_forward">快轉 10 秒</string>
+    <string name="player_skip_forward">快轉 %1$d 秒</string>
+    <string name="player_skip_seconds_label">%1$d秒</string>
 
     <!-- Settings Screen -->
     <string name="settings_title">設定</string>
     <string name="settings_appearance">外觀</string>
     <string name="settings_recording_section">錄音</string>
+    <string name="settings_playback_section">播放</string>
     <string name="settings_language">語言</string>
     <string name="settings_privacy">隱私</string>
     <string name="settings_about">關於</string>
@@ -85,6 +87,9 @@
     <string name="settings_file_name_template_preview">預覽：%1$s.m4a</string>
     <string name="settings_file_name_template_reset">重設</string>
     <string name="settings_keep_screen_awake">錄音時保持螢幕常亮</string>
+    <string name="settings_rewind_seconds">後退間隔</string>
+    <string name="settings_forward_seconds">快轉間隔</string>
+    <string name="settings_skip_seconds_value">%1$d 秒</string>
     <string name="settings_record_location">儲存錄音位置</string>
     <string name="settings_record_location_desc">將新錄音的座標儲存在 SoundMemo 中。</string>
     <string name="settings_write_location_to_media_file">將位置寫入音訊檔案</string>

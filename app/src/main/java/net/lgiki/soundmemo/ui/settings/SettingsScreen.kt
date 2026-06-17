@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -26,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,9 +42,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
@@ -160,6 +164,21 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 }
             }
             item {
+                SettingsSection(title = stringResource(R.string.settings_playback_section)) {
+                    PreferenceRow(
+                        headline = stringResource(R.string.settings_rewind_seconds),
+                        supporting = stringResource(R.string.settings_skip_seconds_value, settings.rewindSeconds),
+                        onClick = { openDialog = SettingsDialog.RewindSeconds },
+                    )
+                    PreferenceDivider()
+                    PreferenceRow(
+                        headline = stringResource(R.string.settings_forward_seconds),
+                        supporting = stringResource(R.string.settings_skip_seconds_value, settings.forwardSeconds),
+                        onClick = { openDialog = SettingsDialog.ForwardSeconds },
+                    )
+                }
+            }
+            item {
                 SettingsSection(title = stringResource(R.string.settings_privacy)) {
                     SettingListItem(
                         headline = stringResource(R.string.settings_record_location),
@@ -250,6 +269,24 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             },
             onReset = {
                 viewModel.resetRecordingNameTemplate()
+                openDialog = null
+            },
+            onDismiss = { openDialog = null },
+        )
+        SettingsDialog.RewindSeconds -> SkipSecondsDialog(
+            title = stringResource(R.string.settings_rewind_seconds),
+            initialSeconds = settings.rewindSeconds,
+            onSave = {
+                viewModel.setRewindSeconds(it)
+                openDialog = null
+            },
+            onDismiss = { openDialog = null },
+        )
+        SettingsDialog.ForwardSeconds -> SkipSecondsDialog(
+            title = stringResource(R.string.settings_forward_seconds),
+            initialSeconds = settings.forwardSeconds,
+            onSave = {
+                viewModel.setForwardSeconds(it)
                 openDialog = null
             },
             onDismiss = { openDialog = null },
@@ -452,11 +489,76 @@ private fun languageOptions(): List<SettingsOption<String>> = listOf(
     SettingsOption("zh-TW", stringResource(R.string.lang_zh_tw)),
 )
 
+@Composable
+private fun SkipSecondsDialog(
+    title: String,
+    initialSeconds: Int,
+    onSave: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var seconds by remember(initialSeconds) { mutableStateOf(initialSeconds.coerceIn(MIN_SKIP_SECONDS, MAX_SKIP_SECONDS)) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    text = stringResource(R.string.settings_skip_seconds_value, seconds),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                )
+                Slider(
+                    value = seconds.toFloat(),
+                    onValueChange = { seconds = it.roundToInt().coerceIn(MIN_SKIP_SECONDS, MAX_SKIP_SECONDS) },
+                    valueRange = MIN_SKIP_SECONDS.toFloat()..MAX_SKIP_SECONDS.toFloat(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    skipSnapPoints().chunked(3).forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                        ) {
+                            row.forEach { snapSeconds ->
+                                TextButton(
+                                    onClick = { seconds = snapSeconds },
+                                    modifier = Modifier.widthIn(min = 72.dp),
+                                ) {
+                                    Text(stringResource(R.string.player_skip_seconds_label, snapSeconds))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onSave(seconds) }) {
+                Text(stringResource(R.string.library_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.library_cancel))
+            }
+        },
+    )
+}
+
+private fun skipSnapPoints(): List<Int> = listOf(1, 5, 10, 15, 30, 60)
+
+private const val MIN_SKIP_SECONDS = 1
+private const val MAX_SKIP_SECONDS = 60
+
 private enum class SettingsDialog {
     Theme,
     Language,
     Bitrate,
     FileNameTemplate,
+    RewindSeconds,
+    ForwardSeconds,
 }
 
 private data class SettingsOption<T>(

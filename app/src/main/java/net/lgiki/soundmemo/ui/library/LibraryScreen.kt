@@ -17,11 +17,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
@@ -31,6 +31,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -59,6 +60,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -127,9 +130,11 @@ fun LibraryScreen(
                                 viewModel.delete(recording.id)
                             },
                             onSeek = viewModel.playback::seekTo,
-                            onSkipBack = { viewModel.playback.skipBy(-10_000) },
+                            rewindSeconds = state.rewindSeconds,
+                            onSkipBack = { viewModel.playback.skipBy(-state.rewindSeconds * 1_000L) },
                             onToggle = viewModel.playback::toggle,
-                            onSkipForward = { viewModel.playback.skipBy(10_000) },
+                            forwardSeconds = state.forwardSeconds,
+                            onSkipForward = { viewModel.playback.skipBy(state.forwardSeconds * 1_000L) },
                             onSpeed = viewModel.playback::setSpeed,
                         )
                     }
@@ -213,8 +218,10 @@ private fun RecordingItem(
     onShare: (android.content.Context) -> Unit,
     onDelete: () -> Unit,
     onSeek: (Long) -> Unit,
+    rewindSeconds: Int,
     onSkipBack: () -> Unit,
     onToggle: () -> Unit,
+    forwardSeconds: Int,
     onSkipForward: () -> Unit,
     onSpeed: (Float) -> Unit,
 ) {
@@ -281,8 +288,10 @@ private fun RecordingItem(
                     state = it,
                     fallbackDurationMs = recording.durationMs,
                     onSeek = onSeek,
+                    rewindSeconds = rewindSeconds,
                     onSkipBack = onSkipBack,
                     onToggle = onToggle,
+                    forwardSeconds = forwardSeconds,
                     onSkipForward = onSkipForward,
                     onSpeed = onSpeed,
                 )
@@ -409,8 +418,10 @@ private fun InlinePlaybackPanel(
     state: PlayerUiState,
     fallbackDurationMs: Long,
     onSeek: (Long) -> Unit,
+    rewindSeconds: Int,
     onSkipBack: () -> Unit,
     onToggle: () -> Unit,
+    forwardSeconds: Int,
     onSkipForward: () -> Unit,
     onSpeed: (Float) -> Unit,
 ) {
@@ -438,8 +449,10 @@ private fun InlinePlaybackPanel(
         }
         TransportControls(
             isPlaying = state.isPlaying,
+            rewindSeconds = rewindSeconds,
             onSkipBack = onSkipBack,
             onToggle = onToggle,
+            forwardSeconds = forwardSeconds,
             onSkipForward = onSkipForward,
         )
         SpeedMenu(currentSpeed = state.speed, onSpeed = onSpeed)
@@ -463,17 +476,28 @@ private fun InlinePlaybackPanel(
 @Composable
 private fun TransportControls(
     isPlaying: Boolean,
+    rewindSeconds: Int,
     onSkipBack: () -> Unit,
     onToggle: () -> Unit,
+    forwardSeconds: Int,
     onSkipForward: () -> Unit,
 ) {
+    val skipBackDescription = stringResource(R.string.player_skip_back, rewindSeconds)
+    val skipForwardDescription = stringResource(R.string.player_skip_forward, forwardSeconds)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FilledTonalIconButton(onClick = onSkipBack, modifier = Modifier.size(48.dp)) {
-            Icon(Icons.Default.Replay10, contentDescription = stringResource(R.string.player_skip_back))
+        FilledTonalButton(
+            onClick = onSkipBack,
+            modifier = Modifier.semantics {
+                contentDescription = skipBackDescription
+            },
+        ) {
+            Icon(Icons.Default.FastRewind, contentDescription = null)
+            Spacer(Modifier.size(6.dp))
+            Text(stringResource(R.string.player_skip_seconds_label, rewindSeconds))
         }
         Surface(
             onClick = onToggle,
@@ -490,8 +514,15 @@ private fun TransportControls(
                     .padding(16.dp),
             )
         }
-        FilledTonalIconButton(onClick = onSkipForward, modifier = Modifier.size(48.dp)) {
-            Icon(Icons.Default.Forward10, contentDescription = stringResource(R.string.player_skip_forward))
+        FilledTonalButton(
+            onClick = onSkipForward,
+            modifier = Modifier.semantics {
+                contentDescription = skipForwardDescription
+            },
+        ) {
+            Text(stringResource(R.string.player_skip_seconds_label, forwardSeconds))
+            Spacer(Modifier.size(6.dp))
+            Icon(Icons.Default.FastForward, contentDescription = null)
         }
     }
 }

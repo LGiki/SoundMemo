@@ -24,6 +24,8 @@ data class LibraryUiState(
     val deleted: List<Recording> = emptyList(),
     val query: String = "",
     val sort: RecordingSort = RecordingSort.Newest,
+    val rewindSeconds: Int = 10,
+    val forwardSeconds: Int = 10,
 )
 
 class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() {
@@ -47,13 +49,16 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
         container.recordingRepository.deletedRecordings,
         query,
         sort,
-    ) { active, deleted, queryValue, sortValue ->
+        container.settingsRepository.settings,
+    ) { active, deleted, queryValue, sortValue, settings ->
         val filtered = active.filter { it.name.contains(queryValue, ignoreCase = true) }
         LibraryUiState(
             recordings = filtered.sortedWith(sortValue.comparator()),
             deleted = deleted,
             query = queryValue,
             sort = sortValue,
+            rewindSeconds = settings.rewindSeconds,
+            forwardSeconds = settings.forwardSeconds,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryUiState())
 

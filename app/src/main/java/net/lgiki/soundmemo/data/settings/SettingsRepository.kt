@@ -28,6 +28,8 @@ class SettingsRepository(context: Context) {
             writeLocationToMediaFile = prefs[WRITE_LOCATION_TO_MEDIA_FILE] ?: false,
             recycleRetentionDays = prefs[RECYCLE_RETENTION_DAYS] ?: 30,
             playbackSpeed = prefs[PLAYBACK_SPEED] ?: 1f,
+            rewindSeconds = (prefs[REWIND_SECONDS] ?: 10).coerceIn(MIN_SKIP_SECONDS, MAX_SKIP_SECONDS),
+            forwardSeconds = (prefs[FORWARD_SECONDS] ?: 10).coerceIn(MIN_SKIP_SECONDS, MAX_SKIP_SECONDS),
             locale = prefs[LOCALE] ?: "system",
         )
     }
@@ -75,6 +77,14 @@ class SettingsRepository(context: Context) {
         dataStore.edit { it[PLAYBACK_SPEED] = speed }
     }
 
+    suspend fun setRewindSeconds(seconds: Int) {
+        dataStore.edit { it[REWIND_SECONDS] = seconds.coerceIn(MIN_SKIP_SECONDS, MAX_SKIP_SECONDS) }
+    }
+
+    suspend fun setForwardSeconds(seconds: Int) {
+        dataStore.edit { it[FORWARD_SECONDS] = seconds.coerceIn(MIN_SKIP_SECONDS, MAX_SKIP_SECONDS) }
+    }
+
     suspend fun setLocale(tag: String) {
         dataStore.edit { it[LOCALE] = tag }
     }
@@ -90,6 +100,10 @@ class SettingsRepository(context: Context) {
         val WRITE_LOCATION_TO_MEDIA_FILE = booleanPreferencesKey("write_location_to_media_file")
         val RECYCLE_RETENTION_DAYS = intPreferencesKey("recycle_retention_days")
         val PLAYBACK_SPEED = floatPreferencesKey("playback_speed")
+        val REWIND_SECONDS = intPreferencesKey("rewind_seconds")
+        val FORWARD_SECONDS = intPreferencesKey("forward_seconds")
         val LOCALE = stringPreferencesKey("locale")
+        const val MIN_SKIP_SECONDS = 1
+        const val MAX_SKIP_SECONDS = 60
     }
 }

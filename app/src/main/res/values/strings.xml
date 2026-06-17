@@ -57,15 +57,17 @@
     <string name="sort_shortest">Shortest</string>
 
     <!-- Player Controls -->
-    <string name="player_skip_back">Skip back 10 seconds</string>
+    <string name="player_skip_back">Skip back %1$d seconds</string>
     <string name="player_pause">Pause playback</string>
     <string name="player_play">Play recording</string>
-    <string name="player_skip_forward">Skip forward 10 seconds</string>
+    <string name="player_skip_forward">Skip forward %1$d seconds</string>
+    <string name="player_skip_seconds_label">%1$ds</string>
 
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_recording_section">Recording</string>
+    <string name="settings_playback_section">Playback</string>
     <string name="settings_language">Language</string>
     <string name="settings_privacy">Privacy</string>
     <string name="settings_about">About</string>
@@ -85,6 +87,9 @@
     <string name="settings_file_name_template_preview">Preview: %1$s.m4a</string>
     <string name="settings_file_name_template_reset">Reset</string>
     <string name="settings_keep_screen_awake">Keep screen awake while recording</string>
+    <string name="settings_rewind_seconds">Rewind interval</string>
+    <string name="settings_forward_seconds">Forward interval</string>
+    <string name="settings_skip_seconds_value">%1$d seconds</string>
     <string name="settings_record_location">Save recording location</string>
     <string name="settings_record_location_desc">Save coordinates in SoundMemo for new recordings.</string>
     <string name="settings_write_location_to_media_file">Write location to audio file</string>
