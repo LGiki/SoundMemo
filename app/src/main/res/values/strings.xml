@@ -98,6 +98,8 @@
     <string name="settings_local_only_desc">SoundMemo has no account, ads, analytics, or in-app cloud upload. Android system backup or device transfer may include app data if enabled in system settings.</string>
     <string name="settings_about_app">SoundMemo</string>
     <string name="settings_about_desc">Open source Android voice recorder</string>
+    <string name="settings_version_code">Version code: %1$d</string>
+    <string name="settings_source_repo">Source Code</string>
 
     <!-- Language Names -->
     <string name="lang_system">System</string>

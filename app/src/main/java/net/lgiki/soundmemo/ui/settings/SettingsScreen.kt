@@ -1,12 +1,15 @@
 package net.lgiki.soundmemo.ui.settings
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,15 +17,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -40,16 +45,33 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.ColorLens
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Visibility
 import androidx.core.content.ContextCompat
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.roundToInt
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
+
+private const val SOURCE_REPO_URL = "https://github.com/LGiki/SoundMemo"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +80,11 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     val bitrateOptions by viewModel.bitrateOptions.collectAsStateWithLifecycle()
     var openDialog by remember { mutableStateOf<SettingsDialog?>(null) }
     val context = LocalContext.current
+    val versionCode = remember(context) {
+        PackageInfoCompat.getLongVersionCode(
+            context.packageManager.getPackageInfo(context.packageName, 0),
+        )
+    }
     fun hasLocationPermission(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -106,12 +133,14 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             item {
                 SettingsSection(title = stringResource(R.string.settings_appearance)) {
                     PreferenceRow(
+                        leadingIcon = Icons.Default.Palette,
                         headline = stringResource(R.string.settings_theme),
                         supporting = themeModeLabel(settings.themeMode),
                         onClick = { openDialog = SettingsDialog.Theme },
                     )
                     PreferenceDivider()
                     SettingListItem(
+                        leadingIcon = Icons.Default.ColorLens,
                         headline = stringResource(R.string.settings_dynamic_color),
                         supporting = stringResource(R.string.settings_dynamic_color_desc),
                         onClick = { viewModel.setDynamicColor(!settings.dynamicColor) },
@@ -124,6 +153,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             item {
                 SettingsSection(title = stringResource(R.string.settings_language)) {
                     PreferenceRow(
+                        leadingIcon = Icons.Default.Language,
                         headline = stringResource(R.string.settings_language),
                         supporting = languageOptions()
                             .firstOrNull { it.value == settings.locale }
@@ -135,6 +165,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             item {
                 SettingsSection(title = stringResource(R.string.settings_recording_section)) {
                     PreferenceRow(
+                        leadingIcon = Icons.Default.GraphicEq,
                         headline = stringResource(R.string.settings_bitrate),
                         supporting = buildString {
                             append("${settings.bitrate / 1000} kbps")
@@ -149,12 +180,14 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     )
                     PreferenceDivider()
                     PreferenceRow(
+                        leadingIcon = Icons.Default.Description,
                         headline = stringResource(R.string.settings_file_name_template),
                         supporting = settings.recordingNameTemplate,
                         onClick = { openDialog = SettingsDialog.FileNameTemplate },
                     )
                     PreferenceDivider()
                     SettingListItem(
+                        leadingIcon = Icons.Default.Visibility,
                         headline = stringResource(R.string.settings_keep_screen_awake),
                         onClick = { viewModel.setKeepScreenAwake(!settings.keepScreenAwake) },
                         trailing = {
@@ -166,12 +199,14 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             item {
                 SettingsSection(title = stringResource(R.string.settings_playback_section)) {
                     PreferenceRow(
+                        leadingIcon = Icons.Default.FastRewind,
                         headline = stringResource(R.string.settings_rewind_seconds),
                         supporting = stringResource(R.string.settings_skip_seconds_value, settings.rewindSeconds),
                         onClick = { openDialog = SettingsDialog.RewindSeconds },
                     )
                     PreferenceDivider()
                     PreferenceRow(
+                        leadingIcon = Icons.Default.FastForward,
                         headline = stringResource(R.string.settings_forward_seconds),
                         supporting = stringResource(R.string.settings_skip_seconds_value, settings.forwardSeconds),
                         onClick = { openDialog = SettingsDialog.ForwardSeconds },
@@ -181,6 +216,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             item {
                 SettingsSection(title = stringResource(R.string.settings_privacy)) {
                     SettingListItem(
+                        leadingIcon = Icons.Default.LocationOn,
                         headline = stringResource(R.string.settings_record_location),
                         supporting = stringResource(R.string.settings_record_location_desc),
                         onClick = ::toggleRecordLocation,
@@ -193,6 +229,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     )
                     PreferenceDivider()
                     SettingListItem(
+                        leadingIcon = Icons.Default.LocationOn,
                         headline = stringResource(R.string.settings_write_location_to_media_file),
                         supporting = stringResource(R.string.settings_write_location_to_media_file_desc),
                         onClick = {
@@ -210,6 +247,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     )
                     PreferenceDivider()
                     SettingListItem(
+                        leadingIcon = Icons.Default.Security,
                         headline = stringResource(R.string.settings_local_only),
                         supporting = stringResource(R.string.settings_local_only_desc),
                     )
@@ -218,8 +256,22 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             item {
                 SettingsSection(title = stringResource(R.string.settings_about)) {
                     SettingListItem(
+                        leadingIcon = Icons.Default.Info,
                         headline = stringResource(R.string.settings_about_app),
-                        supporting = stringResource(R.string.settings_about_desc),
+                        supporting = buildString {
+                            append(stringResource(R.string.settings_about_desc))
+                            append("\n")
+                            append(stringResource(R.string.settings_version_code, versionCode))
+                        },
+                    )
+                    PreferenceDivider()
+                    PreferenceRow(
+                        leadingIcon = Icons.Default.Code,
+                        headline = stringResource(R.string.settings_source_repo),
+                        supporting = SOURCE_REPO_URL,
+                        onClick = {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SOURCE_REPO_URL)))
+                        },
                     )
                 }
             }
@@ -319,43 +371,77 @@ private fun SettingsSection(
 @Composable
 private fun PreferenceDivider() {
     HorizontalDivider(
-        modifier = Modifier.padding(start = 24.dp),
+        modifier = Modifier.padding(start = 72.dp),
         color = MaterialTheme.colorScheme.outlineVariant,
     )
 }
 
 @Composable
 private fun PreferenceRow(
+    leadingIcon: ImageVector? = null,
     headline: String,
     supporting: String? = null,
     onClick: (() -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
-    ListItem(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        headlineContent = { Text(headline) },
-        supportingContent = supporting?.let { { Text(it) } },
-        trailingContent = trailing?.let {
-            {
-                Row(horizontalArrangement = Arrangement.End) {
-                    it()
-                }
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .heightIn(min = 56.dp)
+            .padding(start = 24.dp, top = 12.dp, end = 16.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            leadingIcon?.let {
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-        },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
-    )
+        }
+        Box(modifier = Modifier.width(24.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = headline,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            supporting?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        trailing?.let {
+            Row(
+                modifier = Modifier.padding(start = 16.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                it()
+            }
+        }
+    }
 }
 
 @Composable
 private fun SettingListItem(
+    leadingIcon: ImageVector? = null,
     headline: String,
     supporting: String? = null,
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     PreferenceRow(
+        leadingIcon = leadingIcon,
         headline = headline,
         supporting = supporting,
         onClick = onClick,

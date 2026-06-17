@@ -98,6 +98,8 @@
     <string name="settings_local_only_desc">SoundMemo 無帳號、無廣告、無分析，也不會在應用程式內上傳到雲端。如果系統設定中啟用了 Android 系統備份或裝置轉移，應用程式資料可能會被包含在內。</string>
     <string name="settings_about_app">SoundMemo</string>
     <string name="settings_about_desc">開放原始碼 Android 錄音機</string>
+    <string name="settings_version_code">版本代碼：%1$d</string>
+    <string name="settings_source_repo">原始碼</string>
 
     <!-- Language Names -->
     <string name="lang_system">跟隨系統</string>
