@@ -5,7 +5,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
-const val DEFAULT_RECORDING_NAME_TEMPLATE = "SoundMemo_{timestamp}"
+const val DEFAULT_RECORDING_NAME_TEMPLATE = "SoundMemo_{date}_{time}"
 
 data class GeneratedRecordingName(
     val fileName: String,
@@ -15,12 +15,13 @@ data class GeneratedRecordingName(
 object RecordingNameTemplate {
     private val tokenRegex = Regex("""\{([A-Za-z]+)\}""")
     private val unsafeFileNameChars = Regex("""[\\/:*?"<>|\p{Cntrl}]""")
-    private val supportedTokens = setOf("date", "time", "timestamp", "id")
+    val supportedTokens = listOf("date", "time", "id")
+    private val supportedTokenSet = supportedTokens.toSet()
 
     fun unknownTokens(template: String): Set<String> =
         tokenRegex.findAll(template)
             .map { it.groupValues[1] }
-            .filterNot { it in supportedTokens }
+            .filterNot { it in supportedTokenSet }
             .toSet()
 
     fun isValid(template: String): Boolean = unknownTokens(template).isEmpty()
@@ -56,17 +57,26 @@ object RecordingNameTemplate {
         }
     }
 
+    fun previewToken(
+        token: String,
+        now: Long = System.currentTimeMillis(),
+        sampleId: String = "a1b2c3d4",
+    ): String = replacements(now, sampleId)[token].orEmpty()
+
     private fun render(template: String, now: Long, id: String): String {
-        val date = Date(now)
-        val replacements = mapOf(
-            "date" to SimpleDateFormat("yyyyMMdd", Locale.US).format(date),
-            "time" to SimpleDateFormat("HHmmss", Locale.US).format(date),
-            "timestamp" to SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(date),
-            "id" to id,
-        )
+        val replacements = replacements(now, id)
         return tokenRegex.replace(template) { match ->
             replacements[match.groupValues[1]] ?: match.value
         }
+    }
+
+    private fun replacements(now: Long, id: String): Map<String, String> {
+        val date = Date(now)
+        return mapOf(
+            "date" to SimpleDateFormat("yyyyMMdd", Locale.US).format(date),
+            "time" to SimpleDateFormat("HHmmss", Locale.US).format(date),
+            "id" to id,
+        )
     }
 
     private fun sanitize(value: String): String =

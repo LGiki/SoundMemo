@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -33,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,6 +52,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
@@ -491,6 +498,7 @@ private fun <T> SingleChoiceSettingsDialog(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FileNameTemplateDialog(
     initialTemplate: String,
@@ -498,8 +506,24 @@ private fun FileNameTemplateDialog(
     onReset: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var template by remember(initialTemplate) { mutableStateOf(initialTemplate) }
+    var templateValue by remember(initialTemplate) {
+        mutableStateOf(
+            TextFieldValue(
+                text = initialTemplate,
+                selection = TextRange(initialTemplate.length),
+            ),
+        )
+    }
+    val template = templateValue.text
     val previewNow = remember { System.currentTimeMillis() }
+    val tokens = remember(previewNow) {
+        RecordingNameTemplate.supportedTokens.map { token ->
+            FileNameTemplateToken(
+                value = "{$token}",
+                preview = RecordingNameTemplate.previewToken(token, now = previewNow),
+            )
+        }
+    }
     val unknownTokens = remember(template) { RecordingNameTemplate.unknownTokens(template) }
     val isValid = unknownTokens.isEmpty()
     val preview = remember(template, previewNow) {
@@ -509,39 +533,52 @@ private fun FileNameTemplateDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_file_name_template)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 OutlinedTextField(
-                    value = template,
-                    onValueChange = { template = it },
+                    value = templateValue,
+                    onValueChange = { templateValue = it },
                     label = { Text(stringResource(R.string.settings_file_name_template_label)) },
                     singleLine = true,
                     isError = !isValid,
-                    supportingText = {
-                        Text(
-                            if (isValid) {
-                                stringResource(R.string.settings_file_name_template_tokens)
-                            } else {
+                    supportingText = if (!isValid) {
+                        {
+                            Text(
                                 stringResource(
                                     R.string.settings_file_name_template_unknown_tokens,
                                     unknownTokens.joinToString(", ") { "{$it}" },
-                                )
-                            },
-                        )
+                                ),
+                            )
+                        }
+                    } else {
+                        null
                     },
                     modifier = Modifier.fillMaxWidth(),
                 )
+                FileNameTemplateTokenPicker(
+                    tokens = tokens,
+                    onTokenClick = { token ->
+                        val selectionStart = templateValue.selection.min
+                        val selectionEnd = templateValue.selection.max
+                        val newText = buildString {
+                            append(template.substring(0, selectionStart))
+                            append(token.value)
+                            append(template.substring(selectionEnd))
+                        }
+                        val cursor = selectionStart + token.value.length
+                        templateValue = TextFieldValue(
+                            text = newText,
+                            selection = TextRange(cursor),
+                        )
+                    },
+                )
                 if (isValid) {
-                    Text(
-                        text = stringResource(R.string.settings_file_name_template_preview, preview),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    FileNameTemplatePreview(preview)
                 }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onSave(template) },
+                onClick = { onSave(templateValue.text) },
                 enabled = isValid,
             ) {
                 Text(stringResource(R.string.library_save))
@@ -559,6 +596,88 @@ private fun FileNameTemplateDialog(
         },
     )
 }
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FileNameTemplateTokenPicker(
+    tokens: List<FileNameTemplateToken>,
+    onTokenClick: (FileNameTemplateToken) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.settings_file_name_template_insert_token),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            tokens.forEach { token ->
+                AssistChip(
+                    onClick = { onTokenClick(token) },
+                    label = {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.widthIn(min = 88.dp),
+                        ) {
+                            Text(
+                                text = token.value,
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Text(
+                                text = token.preview,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontFamily = FontFamily.Monospace,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FileNameTemplatePreview(preview: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.settings_file_name_template_preview_label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = stringResource(R.string.settings_file_name_template_preview, preview),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontFamily = FontFamily.Monospace,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+private data class FileNameTemplateToken(
+    val value: String,
+    val preview: String,
+)
 
 @Composable
 private fun themeModeLabel(mode: ThemeMode): String = when (mode) {

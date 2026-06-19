@@ -22,7 +22,7 @@ class SettingsRepository(context: Context) {
             dynamicColor = prefs[DYNAMIC_COLOR] ?: true,
             bitrate = prefs[BITRATE] ?: 128_000,
             sampleRate = prefs[SAMPLE_RATE] ?: 44_100,
-            recordingNameTemplate = prefs[RECORDING_NAME_TEMPLATE] ?: DEFAULT_RECORDING_NAME_TEMPLATE,
+            recordingNameTemplate = normalizeRecordingNameTemplate(prefs[RECORDING_NAME_TEMPLATE]),
             keepScreenAwake = prefs[KEEP_SCREEN_AWAKE] ?: true,
             recordLocation = prefs[RECORD_LOCATION] ?: false,
             writeLocationToMediaFile = prefs[WRITE_LOCATION_TO_MEDIA_FILE] ?: false,
@@ -48,6 +48,11 @@ class SettingsRepository(context: Context) {
 
     suspend fun setRecordingNameTemplate(template: String) {
         dataStore.edit { it[RECORDING_NAME_TEMPLATE] = template.trim().ifBlank { DEFAULT_RECORDING_NAME_TEMPLATE } }
+    }
+
+    private fun normalizeRecordingNameTemplate(template: String?): String = when (template) {
+        null, OLD_DEFAULT_RECORDING_NAME_TEMPLATE -> DEFAULT_RECORDING_NAME_TEMPLATE
+        else -> template
     }
 
     suspend fun setKeepScreenAwake(enabled: Boolean) {
@@ -105,5 +110,6 @@ class SettingsRepository(context: Context) {
         val LOCALE = stringPreferencesKey("locale")
         const val MIN_SKIP_SECONDS = 1
         const val MAX_SKIP_SECONDS = 60
+        const val OLD_DEFAULT_RECORDING_NAME_TEMPLATE = "SoundMemo_{timestamp}"
     }
 }

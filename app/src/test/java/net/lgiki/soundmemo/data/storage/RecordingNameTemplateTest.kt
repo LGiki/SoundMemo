@@ -30,8 +30,8 @@ class RecordingNameTemplateTest {
             uniqueSuffix = "abcdef12-3456-7890",
         )
 
-        assertEquals("SoundMemo_19700101_000001_234_abcdef12.m4a", generated.fileName)
-        assertEquals("SoundMemo_19700101_000001_234", generated.displayName)
+        assertEquals("SoundMemo_19700101_000001_abcdef12.m4a", generated.fileName)
+        assertEquals("SoundMemo_19700101_000001", generated.displayName)
     }
 
     @Test
@@ -78,8 +78,8 @@ class RecordingNameTemplateTest {
             uniqueSuffix = "abcdef12-3456-7890",
         )
 
-        assertEquals("SoundMemo_19700101_000001_234_abcdef12.m4a", generated.fileName)
-        assertEquals("SoundMemo_19700101_000001_234", generated.displayName)
+        assertEquals("SoundMemo_19700101_000001_abcdef12.m4a", generated.fileName)
+        assertEquals("SoundMemo_19700101_000001", generated.displayName)
     }
 
     @Test
