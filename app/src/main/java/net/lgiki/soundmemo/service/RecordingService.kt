@@ -9,6 +9,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.IBinder
@@ -16,6 +17,7 @@ import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.ServiceCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import java.io.File
@@ -116,7 +118,12 @@ class RecordingService : LifecycleService() {
                 pausedAt = 0L
                 pausedTotal = 0L
                 RecordingStateHolder.update(RecorderUiState(status = RecorderStatus.Recording))
-                startForeground(NOTIFICATION_ID, buildNotification(RecorderStatus.Recording))
+                ServiceCompat.startForeground(
+                    this@RecordingService,
+                    NOTIFICATION_ID,
+                    buildNotification(RecorderStatus.Recording),
+                    foregroundServiceType(),
+                )
                 startTicker()
             }.onFailure {
                 if (it is CancellationException) throw it
@@ -306,6 +313,13 @@ class RecordingService : LifecycleService() {
             .addAction(NotificationCompat.Action(0, getString(R.string.notification_action_stop), commandIntent(ACTION_STOP, 3)))
             .build()
     }
+
+    private fun foregroundServiceType(): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        } else {
+            0
+        }
 
     private fun commandIntent(action: String, requestCode: Int): PendingIntent =
         PendingIntent.getService(
