@@ -17,6 +17,10 @@ Open the project in Android Studio for emulator workflows, previews, and SDK man
 
 Use Kotlin with Java 11 bytecode, Jetpack Compose for UI, Material 3 components, Coroutines/Flow for async state, Room for recording metadata, and DataStore for settings. Follow Android Kotlin style: 4-space indentation, `PascalCase` types and composables, `camelCase` functions and properties, and `UPPER_SNAKE_CASE` constants only when idiomatic. Name Compose screens `FeatureScreen.kt`, view models `FeatureViewModel.kt`, and repositories `ThingRepository.kt`. Keep user-facing text in string resources, updating all supported locales when practical.
 
+## Implementation Notes
+
+The app targets Android API 26+ and currently uses a small manual dependency container in `SoundMemoContainer` exposed by `SoundMemoApplication`; extend that wiring before introducing a dependency-injection framework. Recordings are M4A/AAC files stored in app-specific storage under `files/recordings`, with share access mediated by the configured `FileProvider`. Recording metadata lives in the Room `recordings` table, so schema changes require explicit migrations in `SoundMemoDatabase`. Settings use the `soundmemo_settings` Preferences DataStore. When adding location, export, sharing, or storage behavior, preserve the local-first model and keep metadata writes opt-in where existing settings make them opt-in.
+
 ## Testing Guidelines
 
 Use JUnit for local tests and AndroidX test libraries for instrumentation. Add focused unit tests for formatting, repositories, state holders, and view-model logic. Use instrumentation tests for platform behavior such as Room integration, foreground-service flows, and Compose interactions. Name tests after the behavior under test, for example `recordingState_startsPausedFalse`.
