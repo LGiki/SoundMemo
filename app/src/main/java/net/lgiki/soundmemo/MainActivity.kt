@@ -42,6 +42,7 @@ import net.lgiki.soundmemo.ui.library.LibraryScreen
 import net.lgiki.soundmemo.ui.library.LibraryViewModel
 import net.lgiki.soundmemo.ui.recorder.RecorderScreen
 import net.lgiki.soundmemo.ui.recorder.RecorderViewModel
+import net.lgiki.soundmemo.ui.settings.PrivacyScreen
 import net.lgiki.soundmemo.ui.settings.SettingsScreen
 import net.lgiki.soundmemo.ui.settings.SettingsViewModel
 import net.lgiki.soundmemo.ui.theme.SoundMemoTheme
@@ -117,24 +118,29 @@ private fun SoundMemoApp(
         TopLevelDestination("library", stringResource(R.string.nav_library)) { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
         TopLevelDestination("settings", stringResource(R.string.nav_settings)) { Icon(Icons.Default.Settings, contentDescription = null) },
     )
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = backStackEntry?.destination
+    val showBottomBar = destinations.any { destination ->
+        currentDestination?.hierarchy?.any { it.route == destination.route } == true
+    }
     Scaffold(
         bottomBar = {
-            val backStackEntry by navController.currentBackStackEntryAsState()
-            val currentDestination = backStackEntry?.destination
-            NavigationBar {
-                destinations.forEach { destination ->
-                    NavigationBarItem(
-                        selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true,
-                        onClick = {
-                            navController.navigate(destination.route) {
-                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = destination.icon,
-                        label = { Text(destination.label) },
-                    )
+            if (showBottomBar) {
+                NavigationBar {
+                    destinations.forEach { destination ->
+                        NavigationBarItem(
+                            selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true,
+                            onClick = {
+                                navController.navigate(destination.route) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = destination.icon,
+                            label = { Text(destination.label) },
+                        )
+                    }
                 }
             }
         },
@@ -180,7 +186,15 @@ private fun SoundMemoApp(
                 )
             }
             composable("settings") {
-                SettingsScreen(settingsViewModel)
+                SettingsScreen(
+                    viewModel = settingsViewModel,
+                    onPrivacyClick = { navController.navigate("privacy") },
+                )
+            }
+            composable("privacy") {
+                PrivacyScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
             }
         }
     }

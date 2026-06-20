@@ -70,7 +70,9 @@
     <string name="settings_playback_section">播放</string>
     <string name="settings_language">語言</string>
     <string name="settings_privacy">隱私</string>
+    <string name="settings_privacy_desc">了解 SoundMemo 如何處理你的錄音和應用程式資料</string>
     <string name="settings_about">關於</string>
+    <string name="settings_back">返回</string>
     <string name="settings_theme">主題</string>
     <string name="settings_theme_system">跟隨系統</string>
     <string name="settings_theme_light">淺色</string>
@@ -104,6 +106,15 @@
     <string name="settings_write_location_to_media_file_desc">分享或匯出錄音時，在支援的音訊中繼資料中包含座標。</string>
     <string name="settings_local_only">本機優先錄音</string>
     <string name="settings_local_only_desc">SoundMemo 無帳號、無廣告、無分析，也不會在應用程式內上傳到雲端。如果系統設定中啟用了 Android 系統備份或裝置轉移，應用程式資料可能會被包含在內。</string>
+    <string name="privacy_claims_title">隱私摘要</string>
+    <string name="privacy_claim_no_account">無需帳號</string>
+    <string name="privacy_claim_no_account_desc">無需登入即可錄音、播放、重新命名、分享和刪除錄音。</string>
+    <string name="privacy_claim_no_tracking">無廣告或分析</string>
+    <string name="privacy_claim_no_tracking_desc">SoundMemo 不包含廣告 SDK 或分析追蹤。</string>
+    <string name="privacy_claim_no_cloud">不會在應用程式內上傳到雲端</string>
+    <string name="privacy_claim_no_cloud_desc">錄音會儲存在本機應用程式儲存空間中，除非你選擇分享或匯出。</string>
+    <string name="privacy_claim_system_backup">可能受系統備份影響</string>
+    <string name="privacy_claim_system_backup_desc">如果你在系統設定中啟用了 Android 系統備份或裝置轉移，應用程式資料可能會被包含在內。</string>
     <string name="settings_about_app">SoundMemo</string>
     <string name="settings_about_desc">開放原始碼 Android 錄音機</string>
     <string name="settings_version_code">版本代碼：%1$d</string>

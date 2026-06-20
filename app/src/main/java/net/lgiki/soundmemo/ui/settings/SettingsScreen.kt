@@ -70,6 +70,9 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.IconButton
 import androidx.core.content.ContextCompat
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,7 +88,10 @@ private const val SOURCE_REPO_URL = "https://github.com/LGiki/SoundMemo"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel) {
+fun SettingsScreen(
+    viewModel: SettingsViewModel,
+    onPrivacyClick: () -> Unit,
+) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val bitrateOptions by viewModel.bitrateOptions.collectAsStateWithLifecycle()
     var openDialog by remember { mutableStateOf<SettingsDialog?>(null) }
@@ -128,7 +134,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             viewModel.setRecordLocation(false)
         }
     }
-
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { TopAppBar(title = { Text(stringResource(R.string.settings_title)) }) },
@@ -264,10 +269,18 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         },
                     )
                     PreferenceDivider()
-                    SettingListItem(
+                    PreferenceRow(
                         leadingIcon = Icons.Default.Security,
                         headline = stringResource(R.string.settings_local_only),
-                        supporting = stringResource(R.string.settings_local_only_desc),
+                        supporting = stringResource(R.string.settings_privacy_desc),
+                        onClick = onPrivacyClick,
+                        trailing = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
                     )
                 }
             }
@@ -375,6 +388,85 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             onDismiss = { openDialog = null },
         )
         null -> Unit
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PrivacyScreen(
+    onNavigateBack: () -> Unit,
+) {
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.settings_privacy)) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.settings_back),
+                        )
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.surface),
+            contentPadding = PaddingValues(bottom = 24.dp),
+        ) {
+            item {
+                SettingsSection(title = stringResource(R.string.privacy_claims_title)) {
+                    PrivacyClaim(
+                        title = stringResource(R.string.privacy_claim_no_account),
+                        body = stringResource(R.string.privacy_claim_no_account_desc),
+                    )
+                    PreferenceDivider()
+                    PrivacyClaim(
+                        title = stringResource(R.string.privacy_claim_no_tracking),
+                        body = stringResource(R.string.privacy_claim_no_tracking_desc),
+                    )
+                    PreferenceDivider()
+                    PrivacyClaim(
+                        title = stringResource(R.string.privacy_claim_no_cloud),
+                        body = stringResource(R.string.privacy_claim_no_cloud_desc),
+                    )
+                    PreferenceDivider()
+                    PrivacyClaim(
+                        title = stringResource(R.string.privacy_claim_system_backup),
+                        body = stringResource(R.string.privacy_claim_system_backup_desc),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrivacyClaim(
+    title: String,
+    body: String,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp, top = 14.dp, end = 24.dp, bottom = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
