@@ -77,6 +77,7 @@ import kotlin.math.roundToInt
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
+import net.lgiki.soundmemo.domain.recorder.AacBitrateOptions
 import net.lgiki.soundmemo.domain.recorder.BitrateRange
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 
@@ -332,7 +333,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         )
         SettingsDialog.Bitrate -> SingleChoiceSettingsDialog(
             title = stringResource(R.string.settings_bitrate),
-            options = bitrateOptions.values.map { bitrate ->
+            options = bitrateValuesFor(settings.recordingFormat, bitrateOptions.values).map { bitrate ->
                 SettingsOption(bitrate, "${bitrate / 1000} kbps")
             },
             selected = settings.bitrate,
@@ -715,7 +716,16 @@ private fun recordingFormatLabel(format: RecordingFormat): String = when (format
     RecordingFormat.M4a -> stringResource(R.string.settings_file_format_m4a)
     RecordingFormat.Aac -> stringResource(R.string.settings_file_format_aac)
     RecordingFormat.ThreeGp -> stringResource(R.string.settings_file_format_3gp)
+    RecordingFormat.Wav -> stringResource(R.string.settings_file_format_wav)
+    RecordingFormat.Mp3 -> stringResource(R.string.settings_file_format_mp3)
 }
+
+private fun bitrateValuesFor(recordingFormat: RecordingFormat, deviceAacValues: List<Int>): List<Int> =
+    if (recordingFormat.usesAacBitrateRange) {
+        deviceAacValues
+    } else {
+        AacBitrateOptions.fallbackValues
+    }
 
 @Composable
 private fun bitrateSupportingText(
@@ -734,12 +744,14 @@ private fun bitrateSupportingText(
     }
     return buildString {
         append("${bitrate / 1000} kbps")
-        append("\n")
-        append(
-            range?.let {
-                stringResource(R.string.settings_bitrate_device_range, it.min / 1000, it.max / 1000)
-            } ?: stringResource(R.string.settings_bitrate_common_options),
-        )
+        if (recordingFormat.usesAacBitrateRange) {
+            append("\n")
+            append(
+                range?.let {
+                    stringResource(R.string.settings_bitrate_device_range, it.min / 1000, it.max / 1000)
+                } ?: stringResource(R.string.settings_bitrate_common_options),
+            )
+        }
     }
 }
 

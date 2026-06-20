@@ -81,9 +81,11 @@
     <string name="settings_file_format_m4a">M4A (AAC)</string>
     <string name="settings_file_format_aac">AAC (.aac)</string>
     <string name="settings_file_format_3gp">3GP (AMR-WB)</string>
+    <string name="settings_file_format_wav">WAV (PCM)</string>
+    <string name="settings_file_format_mp3">MP3</string>
     <string name="settings_bitrate">比特率</string>
     <string name="settings_bitrate_device_range">设备 AAC 范围：%1$d-%2$d kbps</string>
-    <string name="settings_bitrate_common_options">常用 AAC 选项</string>
+    <string name="settings_bitrate_common_options">常用比特率选项</string>
     <string name="settings_bitrate_fixed_by_format">%1$s 使用固定的 %2$d kbps / %3$d kHz 编码</string>
     <string name="settings_file_name_template">默认文件名</string>
     <string name="settings_file_name_template_label">模板</string>

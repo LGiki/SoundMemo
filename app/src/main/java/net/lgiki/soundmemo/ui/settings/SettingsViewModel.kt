@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.lgiki.soundmemo.data.settings.AppSettings
 import net.lgiki.soundmemo.data.settings.SettingsRepository
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.data.storage.DEFAULT_RECORDING_NAME_TEMPLATE
@@ -43,20 +44,26 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
             }
             _bitrateOptions.value = options
             bitrateOptionsReady = true
-            ensureSupportedBitrate(settings.value.bitrate, options.values)
+            ensureSupportedBitrate(settings.value, options)
         }
         viewModelScope.launch {
             repository.settings.collect { appSettings ->
                 if (bitrateOptionsReady) {
-                    ensureSupportedBitrate(appSettings.bitrate, _bitrateOptions.value.values)
+                    ensureSupportedBitrate(appSettings, _bitrateOptions.value)
                 }
             }
         }
     }
 
-    private suspend fun ensureSupportedBitrate(bitrate: Int, options: List<Int>) {
-        if (bitrate !in options) {
-            repository.setBitrate(AacBitrateOptions.closestSupported(bitrate, options))
+    private suspend fun ensureSupportedBitrate(settings: AppSettings, options: BitrateOptions) {
+        if (!settings.recordingFormat.usesCustomEncodingSettings) return
+        val values = if (settings.recordingFormat.usesAacBitrateRange) {
+            options.values
+        } else {
+            AacBitrateOptions.fallbackValues
+        }
+        if (settings.bitrate !in values) {
+            repository.setBitrate(AacBitrateOptions.closestSupported(settings.bitrate, values))
         }
     }
 

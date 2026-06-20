@@ -48,6 +48,25 @@ class RecordingNameTemplateTest {
     }
 
     @Test
+    fun generate_usesRequestedAudioExtension() {
+        val wav = RecordingNameTemplate.generate(
+            template = "Meeting_{date}_{id}",
+            extension = "wav",
+            now = 1_234L,
+            uniqueSuffix = "abcdef12-3456-7890",
+        )
+        val mp3 = RecordingNameTemplate.generate(
+            template = "Meeting_{date}_{id}",
+            extension = "mp3",
+            now = 1_234L,
+            uniqueSuffix = "abcdef12-3456-7890",
+        )
+
+        assertEquals("Meeting_19700101_abcdef12.wav", wav.fileName)
+        assertEquals("Meeting_19700101_abcdef12.mp3", mp3.fileName)
+    }
+
+    @Test
     fun isValid_rejectsUnknownTokens() {
         assertFalse(RecordingNameTemplate.isValid("Recording_{counter}"))
         assertEquals(setOf("counter"), RecordingNameTemplate.unknownTokens("Recording_{counter}"))

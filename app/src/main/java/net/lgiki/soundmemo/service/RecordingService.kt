@@ -10,7 +10,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
-import android.media.MediaRecorder
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
@@ -37,10 +36,13 @@ import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.RecorderUiState
 import net.lgiki.soundmemo.domain.recorder.RecordingStateHolder
 import net.lgiki.soundmemo.domain.recorder.WAVEFORM_SAMPLE_COUNT
+import net.lgiki.soundmemo.service.audio.AudioRecordingBackend
+import net.lgiki.soundmemo.service.audio.MediaRecorderBackend
+import net.lgiki.soundmemo.service.audio.PcmRecordingBackend
 import net.lgiki.soundmemo.util.wrapWithLocale
 
 class RecordingService : LifecycleService() {
-    private var recorder: MediaRecorder? = null
+    private var recorder: AudioRecordingBackend? = null
     private var outputFile: File? = null
     private var outputDisplayName: String? = null
     private var outputFormat: RecordingFormat? = null
@@ -87,7 +89,7 @@ class RecordingService : LifecycleService() {
         if (recorder != null || isStarting || isStopping) return
         isStarting = true
         lifecycleScope.launch {
-            var mediaRecorder: MediaRecorder? = null
+            var recordingBackend: AudioRecordingBackend? = null
             var file: File? = null
             var started = false
             runCatching {
@@ -100,14 +102,26 @@ class RecordingService : LifecycleService() {
                     extension = recordingFormat.extension,
                 )
                 val createdFile = container.recordingStorage.createOutputFile(generatedName)
-                val createdRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    MediaRecorder(this@RecordingService)
+                val createdRecorder = if (recordingFormat.usesPcmRecorder) {
+                    PcmRecordingBackend(
+                        file = createdFile,
+                        format = recordingFormat,
+                        bitrate = recordingBitrate,
+                        sampleRate = recordingSampleRate,
+                    )
                 } else {
-                    @Suppress("DEPRECATION")
-                    MediaRecorder()
+                    MediaRecorderBackend(
+                        context = this@RecordingService,
+                        file = createdFile,
+                        format = recordingFormat,
+                        bitrate = recordingBitrate,
+                        sampleRate = recordingSampleRate,
+                        location = location,
+                        writeLocationToMediaFile = settings.writeLocationToMediaFile,
+                    )
                 }
                 file = createdFile
-                mediaRecorder = createdRecorder
+                recordingBackend = createdRecorder
                 recorder = createdRecorder
                 outputFile = createdFile
                 outputDisplayName = generatedName.displayName
@@ -115,15 +129,6 @@ class RecordingService : LifecycleService() {
                 outputBitrate = recordingBitrate
                 outputSampleRate = recordingSampleRate
                 recordingLocation = location
-                createdRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
-                createdRecorder.setRecordingFormat(recordingFormat)
-                createdRecorder.setAudioEncodingBitRate(recordingBitrate)
-                createdRecorder.setAudioSamplingRate(recordingSampleRate)
-                createdRecorder.setOutputFile(createdFile.absolutePath)
-                location?.takeIf { settings.writeLocationToMediaFile && recordingFormat.supportsLocationMetadata }?.let {
-                    createdRecorder.setLocation(it.latitude.toFloat(), it.longitude.toFloat())
-                }
-                createdRecorder.prepare()
                 createdRecorder.start()
                 started = true
                 startedAt = SystemClock.elapsedRealtime()
@@ -140,7 +145,7 @@ class RecordingService : LifecycleService() {
             }.onFailure {
                 if (it is CancellationException) throw it
                 if (started) {
-                    runCatching { mediaRecorder?.stop() }
+                    runCatching { recordingBackend?.stop() }
                 }
                 cleanupRecorder()
                 file?.delete()
@@ -286,16 +291,6 @@ class RecordingService : LifecycleService() {
         pausedAt = 0L
         pausedTotal = 0L
         ticker?.cancel()
-    }
-
-    private fun MediaRecorder.setRecordingFormat(format: RecordingFormat) {
-        val (outputFormat, audioEncoder) = when (format) {
-            RecordingFormat.M4a -> MediaRecorder.OutputFormat.MPEG_4 to MediaRecorder.AudioEncoder.AAC
-            RecordingFormat.Aac -> MediaRecorder.OutputFormat.AAC_ADTS to MediaRecorder.AudioEncoder.AAC
-            RecordingFormat.ThreeGp -> MediaRecorder.OutputFormat.THREE_GPP to MediaRecorder.AudioEncoder.AMR_WB
-        }
-        setOutputFormat(outputFormat)
-        setAudioEncoder(audioEncoder)
     }
 
     private fun ensureChannel() {
