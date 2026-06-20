@@ -40,4 +40,10 @@ target_include_directories(
 
 add_library(soundmemo_lame SHARED soundmemo/lame_jni.cpp)
 target_include_directories(soundmemo_lame PRIVATE ${LAME_DIR}/include)
+target_link_options(
+    soundmemo_lame
+    PRIVATE
+    "-Wl,-z,max-page-size=16384"
+    "-Wl,-z,common-page-size=16384"
+)
 target_link_libraries(soundmemo_lame PRIVATE mp3lame log m)
