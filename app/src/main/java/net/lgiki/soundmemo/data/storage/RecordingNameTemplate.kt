@@ -28,6 +28,7 @@ object RecordingNameTemplate {
 
     fun generate(
         template: String,
+        extension: String = "m4a",
         now: Long = System.currentTimeMillis(),
         uniqueSuffix: String = UUID.randomUUID().toString(),
     ): GeneratedRecordingName {
@@ -40,7 +41,7 @@ object RecordingNameTemplate {
         }
         val fileBaseName = if ("{id}" in safeTemplate) sanitized else "${sanitized}_$id"
         return GeneratedRecordingName(
-            fileName = "$fileBaseName.m4a",
+            fileName = "$fileBaseName.$extension",
             displayName = sanitized,
         )
     }

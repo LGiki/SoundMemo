@@ -1,10 +1,12 @@
 package net.lgiki.soundmemo.data.settings
 
 import net.lgiki.soundmemo.data.storage.DEFAULT_RECORDING_NAME_TEMPLATE
+import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.System,
     val dynamicColor: Boolean = true,
+    val recordingFormat: RecordingFormat = RecordingFormat.M4a,
     val bitrate: Int = 128_000,
     val sampleRate: Int = 44_100,
     val recordingNameTemplate: String = DEFAULT_RECORDING_NAME_TEMPLATE,

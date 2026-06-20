@@ -11,10 +11,16 @@ class RecordingStorage(private val context: Context) {
 
     fun createOutputFile(
         template: String = DEFAULT_RECORDING_NAME_TEMPLATE,
+        extension: String = "m4a",
         now: Long = System.currentTimeMillis(),
         uniqueSuffix: String = UUID.randomUUID().toString(),
     ): File {
-        val generatedName = RecordingNameTemplate.generate(template, now, uniqueSuffix)
+        val generatedName = RecordingNameTemplate.generate(
+            template = template,
+            extension = extension,
+            now = now,
+            uniqueSuffix = uniqueSuffix,
+        )
         return createOutputFile(generatedName)
     }
 

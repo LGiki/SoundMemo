@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import net.lgiki.soundmemo.data.storage.DEFAULT_RECORDING_NAME_TEMPLATE
+import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 
 private val Context.settingsDataStore by preferencesDataStore("soundmemo_settings")
 
@@ -20,6 +21,7 @@ class SettingsRepository(context: Context) {
         AppSettings(
             themeMode = prefs[THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.System,
             dynamicColor = prefs[DYNAMIC_COLOR] ?: true,
+            recordingFormat = RecordingFormat.fromStorageValue(prefs[RECORDING_FORMAT]),
             bitrate = prefs[BITRATE] ?: 128_000,
             sampleRate = prefs[SAMPLE_RATE] ?: 44_100,
             recordingNameTemplate = normalizeRecordingNameTemplate(prefs[RECORDING_NAME_TEMPLATE]),
@@ -44,6 +46,10 @@ class SettingsRepository(context: Context) {
 
     suspend fun setBitrate(value: Int) {
         dataStore.edit { it[BITRATE] = value }
+    }
+
+    suspend fun setRecordingFormat(format: RecordingFormat) {
+        dataStore.edit { it[RECORDING_FORMAT] = format.storageValue }
     }
 
     suspend fun setRecordingNameTemplate(template: String) {
@@ -97,6 +103,7 @@ class SettingsRepository(context: Context) {
     private companion object {
         val THEME = stringPreferencesKey("theme")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val RECORDING_FORMAT = stringPreferencesKey("recording_format")
         val BITRATE = intPreferencesKey("bitrate")
         val SAMPLE_RATE = intPreferencesKey("sample_rate")
         val RECORDING_NAME_TEMPLATE = stringPreferencesKey("recording_name_template")

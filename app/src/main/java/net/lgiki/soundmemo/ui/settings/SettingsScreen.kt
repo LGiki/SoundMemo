@@ -77,6 +77,8 @@ import kotlin.math.roundToInt
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
+import net.lgiki.soundmemo.domain.recorder.BitrateRange
+import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 
 private const val SOURCE_REPO_URL = "https://github.com/LGiki/SoundMemo"
 
@@ -172,18 +174,26 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             item {
                 SettingsSection(title = stringResource(R.string.settings_recording_section)) {
                     PreferenceRow(
+                        leadingIcon = Icons.Default.Description,
+                        headline = stringResource(R.string.settings_file_format),
+                        supporting = recordingFormatLabel(settings.recordingFormat),
+                        onClick = { openDialog = SettingsDialog.RecordingFormat },
+                    )
+                    PreferenceDivider()
+                    PreferenceRow(
                         leadingIcon = Icons.Default.GraphicEq,
                         headline = stringResource(R.string.settings_bitrate),
-                        supporting = buildString {
-                            append("${settings.bitrate / 1000} kbps")
-                            append("\n")
-                            append(
-                                bitrateOptions.range?.let { range ->
-                                    stringResource(R.string.settings_bitrate_device_range, range.min / 1000, range.max / 1000)
-                                } ?: stringResource(R.string.settings_bitrate_common_options),
-                            )
+                        supporting = bitrateSupportingText(
+                            recordingFormat = settings.recordingFormat,
+                            bitrate = settings.bitrate,
+                            sampleRate = settings.sampleRate,
+                            range = bitrateOptions.range,
+                        ),
+                        onClick = if (settings.recordingFormat.usesCustomEncodingSettings) {
+                            { openDialog = SettingsDialog.Bitrate }
+                        } else {
+                            null
                         },
-                        onClick = { openDialog = SettingsDialog.Bitrate },
                     )
                     PreferenceDivider()
                     PreferenceRow(
@@ -308,6 +318,18 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             },
             onDismiss = { openDialog = null },
         )
+        SettingsDialog.RecordingFormat -> SingleChoiceSettingsDialog(
+            title = stringResource(R.string.settings_file_format),
+            options = RecordingFormat.entries.map { format ->
+                SettingsOption(format, recordingFormatLabel(format))
+            },
+            selected = settings.recordingFormat,
+            onSelect = {
+                viewModel.setRecordingFormat(it)
+                openDialog = null
+            },
+            onDismiss = { openDialog = null },
+        )
         SettingsDialog.Bitrate -> SingleChoiceSettingsDialog(
             title = stringResource(R.string.settings_bitrate),
             options = bitrateOptions.values.map { bitrate ->
@@ -322,6 +344,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         )
         SettingsDialog.FileNameTemplate -> FileNameTemplateDialog(
             initialTemplate = settings.recordingNameTemplate,
+            extension = settings.recordingFormat.extension,
             onSave = {
                 viewModel.setRecordingNameTemplate(it)
                 openDialog = null
@@ -502,6 +525,7 @@ private fun <T> SingleChoiceSettingsDialog(
 @Composable
 private fun FileNameTemplateDialog(
     initialTemplate: String,
+    extension: String,
     onSave: (String) -> Unit,
     onReset: () -> Unit,
     onDismiss: () -> Unit,
@@ -572,7 +596,7 @@ private fun FileNameTemplateDialog(
                     },
                 )
                 if (isValid) {
-                    FileNameTemplatePreview(preview)
+                    FileNameTemplatePreview(preview, extension)
                 }
             }
         },
@@ -645,7 +669,7 @@ private fun FileNameTemplateTokenPicker(
 }
 
 @Composable
-private fun FileNameTemplatePreview(preview: String) {
+private fun FileNameTemplatePreview(preview: String, extension: String) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = MaterialTheme.shapes.small,
@@ -663,7 +687,7 @@ private fun FileNameTemplatePreview(preview: String) {
                 textAlign = TextAlign.Center,
             )
             Text(
-                text = stringResource(R.string.settings_file_name_template_preview, preview),
+                text = stringResource(R.string.settings_file_name_template_preview, preview, extension),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontFamily = FontFamily.Monospace,
@@ -684,6 +708,39 @@ private fun themeModeLabel(mode: ThemeMode): String = when (mode) {
     ThemeMode.System -> stringResource(R.string.settings_theme_system)
     ThemeMode.Light -> stringResource(R.string.settings_theme_light)
     ThemeMode.Dark -> stringResource(R.string.settings_theme_dark)
+}
+
+@Composable
+private fun recordingFormatLabel(format: RecordingFormat): String = when (format) {
+    RecordingFormat.M4a -> stringResource(R.string.settings_file_format_m4a)
+    RecordingFormat.Aac -> stringResource(R.string.settings_file_format_aac)
+    RecordingFormat.ThreeGp -> stringResource(R.string.settings_file_format_3gp)
+}
+
+@Composable
+private fun bitrateSupportingText(
+    recordingFormat: RecordingFormat,
+    bitrate: Int,
+    sampleRate: Int,
+    range: BitrateRange?,
+): String {
+    if (!recordingFormat.usesCustomEncodingSettings) {
+        return stringResource(
+            R.string.settings_bitrate_fixed_by_format,
+            recordingFormatLabel(recordingFormat),
+            recordingFormat.bitrateFor(bitrate) / 1000,
+            recordingFormat.sampleRateFor(sampleRate) / 1000,
+        )
+    }
+    return buildString {
+        append("${bitrate / 1000} kbps")
+        append("\n")
+        append(
+            range?.let {
+                stringResource(R.string.settings_bitrate_device_range, it.min / 1000, it.max / 1000)
+            } ?: stringResource(R.string.settings_bitrate_common_options),
+        )
+    }
 }
 
 @Composable
@@ -760,6 +817,7 @@ private const val MAX_SKIP_SECONDS = 60
 private enum class SettingsDialog {
     Theme,
     Language,
+    RecordingFormat,
     Bitrate,
     FileNameTemplate,
     RewindSeconds,

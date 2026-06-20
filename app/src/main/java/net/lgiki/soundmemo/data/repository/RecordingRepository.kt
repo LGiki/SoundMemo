@@ -16,6 +16,7 @@ class RecordingRepository(private val dao: RecordingDao) {
         durationMs: Long,
         bitrate: Int,
         sampleRate: Int,
+        format: String = file.extension.lowercase(),
         location: RecordingLocation?,
     ): Long = dao.insert(
         Recording(
@@ -23,6 +24,7 @@ class RecordingRepository(private val dao: RecordingDao) {
             filePath = file.absolutePath,
             durationMs = durationMs,
             fileSizeBytes = file.length(),
+            format = format,
             bitrate = bitrate,
             sampleRate = sampleRate,
             locationLatitude = location?.latitude,

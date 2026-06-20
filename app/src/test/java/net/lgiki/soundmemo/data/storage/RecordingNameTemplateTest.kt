@@ -38,11 +38,12 @@ class RecordingNameTemplateTest {
     fun generate_explicitIdDoesNotAppendSecondId() {
         val generated = RecordingNameTemplate.generate(
             template = "Meeting_{date}_{id}",
+            extension = "aac",
             now = 1_234L,
             uniqueSuffix = "abcdef12-3456-7890",
         )
 
-        assertEquals("Meeting_19700101_abcdef12.m4a", generated.fileName)
+        assertEquals("Meeting_19700101_abcdef12.aac", generated.fileName)
         assertEquals("Meeting_19700101_abcdef12", generated.displayName)
     }
 

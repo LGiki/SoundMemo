@@ -31,6 +31,7 @@ import net.lgiki.soundmemo.MainActivity
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.SoundMemoApplication
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
+import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 import net.lgiki.soundmemo.domain.recorder.RecordingLocation
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.RecorderUiState
@@ -42,6 +43,9 @@ class RecordingService : LifecycleService() {
     private var recorder: MediaRecorder? = null
     private var outputFile: File? = null
     private var outputDisplayName: String? = null
+    private var outputFormat: RecordingFormat? = null
+    private var outputBitrate: Int = 0
+    private var outputSampleRate: Int = 0
     private var recordingLocation: RecordingLocation? = null
     private var isStarting = false
     private var isStopping = false
@@ -88,7 +92,13 @@ class RecordingService : LifecycleService() {
             var started = false
             runCatching {
                 val settings = container.settingsRepository.settings.first()
-                val generatedName = RecordingNameTemplate.generate(settings.recordingNameTemplate)
+                val recordingFormat = settings.recordingFormat
+                val recordingBitrate = recordingFormat.bitrateFor(settings.bitrate)
+                val recordingSampleRate = recordingFormat.sampleRateFor(settings.sampleRate)
+                val generatedName = RecordingNameTemplate.generate(
+                    template = settings.recordingNameTemplate,
+                    extension = recordingFormat.extension,
+                )
                 val createdFile = container.recordingStorage.createOutputFile(generatedName)
                 val createdRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     MediaRecorder(this@RecordingService)
@@ -101,14 +111,16 @@ class RecordingService : LifecycleService() {
                 recorder = createdRecorder
                 outputFile = createdFile
                 outputDisplayName = generatedName.displayName
+                outputFormat = recordingFormat
+                outputBitrate = recordingBitrate
+                outputSampleRate = recordingSampleRate
                 recordingLocation = location
                 createdRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
-                createdRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                createdRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                createdRecorder.setAudioEncodingBitRate(settings.bitrate)
-                createdRecorder.setAudioSamplingRate(settings.sampleRate)
+                createdRecorder.setRecordingFormat(recordingFormat)
+                createdRecorder.setAudioEncodingBitRate(recordingBitrate)
+                createdRecorder.setAudioSamplingRate(recordingSampleRate)
                 createdRecorder.setOutputFile(createdFile.absolutePath)
-                location?.takeIf { settings.writeLocationToMediaFile }?.let {
+                location?.takeIf { settings.writeLocationToMediaFile && recordingFormat.supportsLocationMetadata }?.let {
                     createdRecorder.setLocation(it.latitude.toFloat(), it.longitude.toFloat())
                 }
                 createdRecorder.prepare()
@@ -180,6 +192,9 @@ class RecordingService : LifecycleService() {
         lifecycleScope.launch {
             val file = outputFile
             val displayName = outputDisplayName
+            val activeFormat = outputFormat
+            val activeBitrate = outputBitrate
+            val activeSampleRate = outputSampleRate
             val elapsed = currentElapsed()
             val location = recordingLocation
             try {
@@ -187,12 +202,14 @@ class RecordingService : LifecycleService() {
                 cleanupRecorder()
                 if (save && file != null && file.exists() && file.length() > 0) {
                     val settings = container.settingsRepository.settings.first()
+                    val recordingFormat = activeFormat ?: settings.recordingFormat
                     val id = container.recordingRepository.addFromFile(
                         file = file,
                         name = displayName.orEmpty(),
                         durationMs = elapsed,
-                        bitrate = settings.bitrate,
-                        sampleRate = settings.sampleRate,
+                        bitrate = activeBitrate.takeIf { it > 0 } ?: recordingFormat.bitrateFor(settings.bitrate),
+                        sampleRate = activeSampleRate.takeIf { it > 0 } ?: recordingFormat.sampleRateFor(settings.sampleRate),
+                        format = recordingFormat.storageValue,
                         location = location,
                     )
                     RecordingStateHolder.update(
@@ -260,12 +277,25 @@ class RecordingService : LifecycleService() {
         recorder = null
         outputFile = null
         outputDisplayName = null
+        outputFormat = null
+        outputBitrate = 0
+        outputSampleRate = 0
         recordingLocation = null
         isStarting = false
         startedAt = 0L
         pausedAt = 0L
         pausedTotal = 0L
         ticker?.cancel()
+    }
+
+    private fun MediaRecorder.setRecordingFormat(format: RecordingFormat) {
+        val (outputFormat, audioEncoder) = when (format) {
+            RecordingFormat.M4a -> MediaRecorder.OutputFormat.MPEG_4 to MediaRecorder.AudioEncoder.AAC
+            RecordingFormat.Aac -> MediaRecorder.OutputFormat.AAC_ADTS to MediaRecorder.AudioEncoder.AAC
+            RecordingFormat.ThreeGp -> MediaRecorder.OutputFormat.THREE_GPP to MediaRecorder.AudioEncoder.AMR_WB
+        }
+        setOutputFormat(outputFormat)
+        setAudioEncoder(audioEncoder)
     }
 
     private fun ensureChannel() {
