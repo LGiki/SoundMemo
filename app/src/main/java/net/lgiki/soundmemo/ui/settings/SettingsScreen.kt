@@ -58,17 +58,20 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.DriveFileRenameOutline
+import androidx.compose.material.icons.filled.EditLocationAlt
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -147,7 +150,7 @@ fun SettingsScreen(
             item {
                 SettingsSection(title = stringResource(R.string.settings_appearance)) {
                     PreferenceRow(
-                        leadingIcon = Icons.Default.Palette,
+                        leadingIcon = Icons.Default.WbSunny,
                         headline = stringResource(R.string.settings_theme),
                         supporting = themeModeLabel(settings.themeMode),
                         onClick = { openDialog = SettingsDialog.Theme },
@@ -179,7 +182,7 @@ fun SettingsScreen(
             item {
                 SettingsSection(title = stringResource(R.string.settings_recording_section)) {
                     PreferenceRow(
-                        leadingIcon = Icons.Default.Description,
+                        leadingIcon = Icons.Default.AudioFile,
                         headline = stringResource(R.string.settings_file_format),
                         supporting = recordingFormatLabel(settings.recordingFormat),
                         onClick = { openDialog = SettingsDialog.RecordingFormat },
@@ -201,7 +204,7 @@ fun SettingsScreen(
                     )
                     PreferenceDivider()
                     PreferenceRow(
-                        leadingIcon = Icons.Default.Description,
+                        leadingIcon = Icons.Default.DriveFileRenameOutline,
                         headline = stringResource(R.string.settings_file_name_template),
                         supporting = settings.recordingNameTemplate,
                         onClick = { openDialog = SettingsDialog.FileNameTemplate },
@@ -237,7 +240,7 @@ fun SettingsScreen(
             item {
                 SettingsSection(title = stringResource(R.string.settings_privacy)) {
                     SettingListItem(
-                        leadingIcon = Icons.Default.LocationOn,
+                        leadingIcon = Icons.Default.MyLocation,
                         headline = stringResource(R.string.settings_record_location),
                         supporting = stringResource(R.string.settings_record_location_desc),
                         onClick = ::toggleRecordLocation,
@@ -250,7 +253,7 @@ fun SettingsScreen(
                     )
                     PreferenceDivider()
                     SettingListItem(
-                        leadingIcon = Icons.Default.LocationOn,
+                        leadingIcon = Icons.Default.EditLocationAlt,
                         headline = stringResource(R.string.settings_write_location_to_media_file),
                         supporting = stringResource(R.string.settings_write_location_to_media_file_desc),
                         onClick = {
