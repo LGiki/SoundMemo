@@ -96,8 +96,8 @@
     <string name="settings_file_name_template_preview">%1$s.%2$s</string>
     <string name="settings_file_name_template_reset">Reset</string>
     <string name="settings_keep_screen_awake">Keep screen awake while recording</string>
-    <string name="settings_rewind_seconds">Rewind interval</string>
-    <string name="settings_forward_seconds">Forward interval</string>
+    <string name="settings_rewind_seconds">Default rewind interval</string>
+    <string name="settings_forward_seconds">Default forward interval</string>
     <string name="settings_skip_seconds_value">%1$d seconds</string>
     <string name="settings_record_location">Save recording location</string>
     <string name="settings_record_location_desc">Save coordinates in SoundMemo for new recordings.</string>

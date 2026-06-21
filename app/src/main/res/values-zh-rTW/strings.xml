@@ -96,8 +96,8 @@
     <string name="settings_file_name_template_preview">%1$s.%2$s</string>
     <string name="settings_file_name_template_reset">重設</string>
     <string name="settings_keep_screen_awake">錄音時保持螢幕常亮</string>
-    <string name="settings_rewind_seconds">後退間隔</string>
-    <string name="settings_forward_seconds">快轉間隔</string>
+    <string name="settings_rewind_seconds">預設後退間隔</string>
+    <string name="settings_forward_seconds">預設快轉間隔</string>
     <string name="settings_skip_seconds_value">%1$d 秒</string>
     <string name="settings_record_location">儲存錄音位置</string>
     <string name="settings_record_location_desc">將新錄音的座標儲存在 SoundMemo 中。</string>
