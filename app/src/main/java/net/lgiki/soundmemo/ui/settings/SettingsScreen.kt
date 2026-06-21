@@ -81,7 +81,6 @@ import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
 import net.lgiki.soundmemo.domain.recorder.AacBitrateOptions
-import net.lgiki.soundmemo.domain.recorder.BitrateRange
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 
 private const val SOURCE_REPO_URL = "https://github.com/LGiki/SoundMemo"
@@ -193,7 +192,6 @@ fun SettingsScreen(
                             recordingFormat = settings.recordingFormat,
                             bitrate = settings.bitrate,
                             sampleRate = settings.sampleRate,
-                            range = bitrateOptions.range,
                         ),
                         onClick = if (settings.recordingFormat.usesCustomEncodingSettings) {
                             { openDialog = SettingsDialog.Bitrate }
@@ -824,7 +822,6 @@ private fun bitrateSupportingText(
     recordingFormat: RecordingFormat,
     bitrate: Int,
     sampleRate: Int,
-    range: BitrateRange?,
 ): String {
     if (!recordingFormat.usesCustomEncodingSettings) {
         return stringResource(
@@ -834,17 +831,7 @@ private fun bitrateSupportingText(
             recordingFormat.sampleRateFor(sampleRate) / 1000,
         )
     }
-    return buildString {
-        append("${bitrate / 1000} kbps")
-        if (recordingFormat.usesAacBitrateRange) {
-            append("\n")
-            append(
-                range?.let {
-                    stringResource(R.string.settings_bitrate_device_range, it.min / 1000, it.max / 1000)
-                } ?: stringResource(R.string.settings_bitrate_common_options),
-            )
-        }
-    }
+    return "${bitrate / 1000} kbps"
 }
 
 @Composable
