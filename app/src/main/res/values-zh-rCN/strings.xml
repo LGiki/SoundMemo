@@ -23,6 +23,8 @@
     <string name="recorder_resume">继续录音</string>
     <string name="recorder_saving_audio">正在保存录音…</string>
     <string name="recorder_discard">放弃</string>
+    <string name="recorder_discard_confirm_title">放弃录音？</string>
+    <string name="recorder_discard_confirm_message">所有已录制的音频将被永久删除，此操作无法撤销。</string>
     <string name="recorder_saved_message">录音已保存。</string>
     <string name="recorder_start_failed">无法开始录音。</string>
     <string name="recorder_audio_input_current">录音输入</string>

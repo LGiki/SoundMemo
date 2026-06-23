@@ -23,6 +23,8 @@
     <string name="recorder_resume">Resume recording</string>
     <string name="recorder_saving_audio">Saving audio…</string>
     <string name="recorder_discard">Discard</string>
+    <string name="recorder_discard_confirm_title">Discard recording?</string>
+    <string name="recorder_discard_confirm_message">All recorded audio will be permanently deleted. This cannot be undone.</string>
     <string name="recorder_saved_message">Recording saved.</string>
     <string name="recorder_start_failed">Recording could not start.</string>
     <string name="recorder_audio_input_current">Recording input</string>

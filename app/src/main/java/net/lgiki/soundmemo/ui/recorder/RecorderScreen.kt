@@ -81,6 +81,7 @@ fun RecorderScreen(
     val audioInputDevices by viewModel.audioInputDevices.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var showAudioInputDialog by remember { mutableStateOf(false) }
+    var showDiscardConfirmDialog by remember { mutableStateOf(false) }
     LaunchedEffect(state.message) {
         state.message?.let {
             snackbar.showSnackbar(it)
@@ -118,9 +119,18 @@ fun RecorderScreen(
                 onPause = { viewModel.pause(context) },
                 onResume = { viewModel.resume(context) },
                 onStop = { viewModel.stop(context) },
-                onCancel = { viewModel.cancel(context) },
+                onDiscardClick = { showDiscardConfirmDialog = true },
             )
         }
+    }
+    if (showDiscardConfirmDialog) {
+        DiscardRecordingDialog(
+            onConfirm = {
+                showDiscardConfirmDialog = false
+                viewModel.cancel(context)
+            },
+            onDismiss = { showDiscardConfirmDialog = false },
+        )
     }
     if (showAudioInputDialog) {
         AudioInputPickerDialog(
@@ -334,13 +344,38 @@ private fun audioInputPreferenceSelected(
 
 
 @Composable
+private fun DiscardRecordingDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.recorder_discard_confirm_title)) },
+        text = { Text(stringResource(R.string.recorder_discard_confirm_message)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = stringResource(R.string.recorder_discard),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.library_cancel))
+            }
+        },
+    )
+}
+
+@Composable
 private fun RecorderControls(
     status: RecorderStatus,
     onRecordRequest: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
-    onCancel: () -> Unit,
+    onDiscardClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -389,7 +424,7 @@ private fun RecorderControls(
             }
         }
         if (status == RecorderStatus.Recording || status == RecorderStatus.Paused) {
-            OutlinedButton(onClick = onCancel) {
+            OutlinedButton(onClick = onDiscardClick) {
                 Icon(Icons.Default.Delete, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
                 Text(stringResource(R.string.recorder_discard))
