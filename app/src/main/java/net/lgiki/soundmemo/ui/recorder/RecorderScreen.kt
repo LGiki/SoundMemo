@@ -2,6 +2,7 @@ package net.lgiki.soundmemo.ui.recorder
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Error
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,16 +34,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -53,10 +60,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.lgiki.soundmemo.R
+import net.lgiki.soundmemo.domain.recorder.AudioInputDevice
 import net.lgiki.soundmemo.domain.recorder.AudioInputPreference
 import net.lgiki.soundmemo.domain.recorder.AudioInputRoute
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.WAVEFORM_SAMPLE_COUNT
+import net.lgiki.soundmemo.domain.recorder.matches
+import net.lgiki.soundmemo.domain.recorder.normalizedAudioInputName
 import net.lgiki.soundmemo.ui.audioInputLabel
 import net.lgiki.soundmemo.util.formatDuration
 
@@ -71,7 +81,9 @@ fun RecorderScreen(
     val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
     val preferredAudioInput by viewModel.preferredAudioInput.collectAsStateWithLifecycle()
+    val audioInputDevices by viewModel.audioInputDevices.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    var showAudioInputDialog by remember { mutableStateOf(false) }
     LaunchedEffect(state.message) {
         state.message?.let {
             snackbar.showSnackbar(it)
@@ -98,6 +110,7 @@ fun RecorderScreen(
                 waveform = state.waveform,
                 preferredAudioInput = state.preferredAudioInput ?: preferredAudioInput,
                 actualAudioInput = state.actualAudioInput,
+                onPreferredAudioInputClick = { showAudioInputDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -112,6 +125,17 @@ fun RecorderScreen(
             )
         }
     }
+    if (showAudioInputDialog) {
+        AudioInputPickerDialog(
+            devices = audioInputDevices,
+            selected = preferredAudioInput,
+            onSelect = {
+                viewModel.setPreferredAudioInput(it)
+                showAudioInputDialog = false
+            },
+            onDismiss = { showAudioInputDialog = false },
+        )
+    }
 }
 
 @Composable
@@ -122,6 +146,7 @@ private fun RecordingStatusPanel(
     waveform: List<Float>,
     preferredAudioInput: AudioInputPreference?,
     actualAudioInput: AudioInputRoute?,
+    onPreferredAudioInputClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -146,6 +171,7 @@ private fun RecordingStatusPanel(
                 status = status,
                 preferredAudioInput = preferredAudioInput,
                 actualAudioInput = actualAudioInput,
+                onPreferredAudioInputClick = onPreferredAudioInputClick,
             )
             RecordingWaveform(
                 waveform = waveform,
@@ -163,6 +189,7 @@ private fun AudioInputLine(
     status: RecorderStatus,
     preferredAudioInput: AudioInputPreference?,
     actualAudioInput: AudioInputRoute?,
+    onPreferredAudioInputClick: () -> Unit,
 ) {
     val active = status == RecorderStatus.Recording || status == RecorderStatus.Paused
     val title = if (active) {
@@ -195,6 +222,7 @@ private fun AudioInputLine(
         modifier = Modifier
             .widthIn(max = 320.dp)
             .heightIn(min = 36.dp)
+            .then(if (!active) Modifier.clickable(onClick = onPreferredAudioInputClick) else Modifier)
             .semantics { contentDescription = description },
     ) {
         Row(
@@ -213,8 +241,98 @@ private fun AudioInputLine(
                 color = content,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
+            if (!active) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun AudioInputPickerDialog(
+    devices: List<AudioInputDevice>,
+    selected: AudioInputPreference?,
+    onSelect: (AudioInputPreference?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_microphone)) },
+        text = {
+            Column {
+                AudioInputOptionRow(
+                    label = stringResource(R.string.settings_microphone_automatic),
+                    selected = selected == null,
+                    onClick = { onSelect(null) },
+                )
+                devices.forEach { device ->
+                    val preference = device.preference
+                    AudioInputOptionRow(
+                        label = audioInputLabel(device.type, device.productName),
+                        selected = audioInputPreferenceSelected(
+                            option = preference,
+                            selected = selected,
+                            devices = devices,
+                        ),
+                        onClick = { onSelect(preference) },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.library_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun AudioInputOptionRow(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = onClick,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+private fun audioInputPreferenceSelected(
+    option: AudioInputPreference,
+    selected: AudioInputPreference?,
+    devices: List<AudioInputDevice>,
+): Boolean {
+    if (selected == null) return false
+    return if (devices.any { selected.matches(it) }) {
+        option.id == selected.id &&
+            option.type == selected.type &&
+            normalizedAudioInputName(option.productName) == normalizedAudioInputName(selected.productName)
+    } else {
+        option.type == selected.type &&
+            normalizedAudioInputName(option.productName) == normalizedAudioInputName(selected.productName)
     }
 }
 

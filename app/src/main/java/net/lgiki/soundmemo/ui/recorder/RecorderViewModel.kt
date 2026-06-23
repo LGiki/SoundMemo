@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.lgiki.soundmemo.SoundMemoContainer
+import net.lgiki.soundmemo.domain.recorder.AudioInputDevice
 import net.lgiki.soundmemo.domain.recorder.AudioInputPreference
 import net.lgiki.soundmemo.domain.recorder.RecordingLocation
 import net.lgiki.soundmemo.domain.recorder.RecordingLocationProvider
@@ -28,6 +29,12 @@ class RecorderViewModel(
     val preferredAudioInput: StateFlow<AudioInputPreference?> = container.settingsRepository.settings
         .map { it.preferredAudioInput }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val audioInputDevices: StateFlow<List<AudioInputDevice>> = container.audioInputDeviceRepository.devices
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            container.audioInputDeviceRepository.currentDevices(),
+        )
 
     fun start(context: Context, location: RecordingLocation? = null) {
         ContextCompat.startForegroundService(context, RecordingService.startIntent(context, RecordingService.ACTION_START, location))
@@ -59,6 +66,12 @@ class RecorderViewModel(
 
     fun cancel(context: Context) {
         context.startService(RecordingService.startIntent(context, RecordingService.ACTION_CANCEL))
+    }
+
+    fun setPreferredAudioInput(preference: AudioInputPreference?) {
+        viewModelScope.launch {
+            container.settingsRepository.setPreferredAudioInput(preference)
+        }
     }
 
     fun requiredPermissions(): Array<String> = buildList {
