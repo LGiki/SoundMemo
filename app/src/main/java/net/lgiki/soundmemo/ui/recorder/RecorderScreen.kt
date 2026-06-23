@@ -175,7 +175,7 @@ private fun RecordingStatusPanel(
             )
             RecordingWaveform(
                 waveform = waveform,
-                active = status == RecorderStatus.Recording,
+                status = status,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -481,7 +481,7 @@ private fun StopButton(onClick: () -> Unit) {
 @Composable
 private fun RecordingWaveform(
     waveform: List<Float>,
-    active: Boolean,
+    status: RecorderStatus,
     modifier: Modifier = Modifier,
 ) {
     val waveformDesc = stringResource(R.string.recorder_waveform_desc)
@@ -492,13 +492,13 @@ private fun RecordingWaveform(
             List(WAVEFORM_SAMPLE_COUNT - waveform.size) { 0f } + waveform
         }
     }
-    val barColor = if (active) {
-        MaterialTheme.colorScheme.error
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f)
+    val activeSampleColor = when (status) {
+        RecorderStatus.Recording -> MaterialTheme.colorScheme.primary
+        RecorderStatus.Paused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.68f)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f)
     }
-    val restingBarColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
-    val centerLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.54f)
+    val restingBarColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.64f)
+    val centerLineColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
 
     Canvas(modifier = modifier.semantics { contentDescription = waveformDesc }) {
         val centerY = size.height / 2f
@@ -535,7 +535,7 @@ private fun RecordingWaveform(
             }
             val x = startX + index * step
             drawLine(
-                color = if (visibleLevel > 0f) barColor else restingBarColor,
+                color = if (visibleLevel > 0f) activeSampleColor else restingBarColor,
                 start = Offset(x, centerY - barHeight / 2f),
                 end = Offset(x, centerY + barHeight / 2f),
                 strokeWidth = strokeWidth,
