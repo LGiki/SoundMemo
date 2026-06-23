@@ -228,7 +228,11 @@ class RecordingService : LifecycleService() {
                         location = location,
                     )
                     RecordingStateHolder.update(
-                        RecorderUiState(status = RecorderStatus.Saved, elapsedMs = elapsed, lastSavedId = id, message = getString(R.string.recorder_saved_message)),
+                        RecorderUiState(
+                            status = RecorderStatus.Saved,
+                            lastSavedId = id,
+                            message = getString(R.string.recorder_saved_message),
+                        ),
                     )
                 } else {
                     file?.delete()
