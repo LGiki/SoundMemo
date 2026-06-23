@@ -1,9 +1,11 @@
 package net.lgiki.soundmemo.service.audio
 
 import android.content.Context
+import android.media.AudioDeviceInfo
 import android.media.MediaRecorder
 import android.os.Build
 import java.io.File
+import net.lgiki.soundmemo.domain.recorder.AudioInputRoute
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 import net.lgiki.soundmemo.domain.recorder.RecordingLocation
 
@@ -15,7 +17,10 @@ internal class MediaRecorderBackend(
     private val sampleRate: Int,
     private val location: RecordingLocation?,
     private val writeLocationToMediaFile: Boolean,
+    private val preferredDevice: AudioDeviceInfo?,
 ) : AudioRecordingBackend {
+    @Volatile private var released = false
+
     private val recorder: MediaRecorder =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(context)
@@ -27,8 +32,18 @@ internal class MediaRecorderBackend(
     override val maxAmplitude: Int
         get() = runCatching { recorder.maxAmplitude }.getOrDefault(0)
 
+    override val routedDevice: AudioInputRoute?
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && !released) {
+            runCatching { recorder.routedDevice?.toAudioInputRoute() }.getOrNull()
+        } else {
+            null
+        }
+
     override fun start() {
         recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            preferredDevice?.let { recorder.setPreferredDevice(it) }
+        }
         recorder.setRecordingFormat(format)
         recorder.setAudioEncodingBitRate(bitrate)
         recorder.setAudioSamplingRate(sampleRate)
@@ -53,6 +68,8 @@ internal class MediaRecorderBackend(
     }
 
     override fun release() {
+        if (released) return
+        released = true
         runCatching { recorder.release() }
     }
 

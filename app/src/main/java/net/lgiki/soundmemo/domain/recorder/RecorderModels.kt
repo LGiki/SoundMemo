@@ -16,6 +16,8 @@ data class RecorderUiState(
     val elapsedMs: Long = 0,
     val amplitude: Int = 0,
     val waveform: List<Float> = emptyList(),
+    val preferredAudioInput: AudioInputPreference? = null,
+    val actualAudioInput: AudioInputRoute? = null,
     val lastSavedId: Long? = null,
     val message: String? = null,
 )

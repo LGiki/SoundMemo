@@ -15,8 +15,10 @@ class SoundMemoViewModelFactory(
         when {
             modelClass.isAssignableFrom(RecorderViewModel::class.java) -> RecorderViewModel(container) as T
             modelClass.isAssignableFrom(LibraryViewModel::class.java) -> LibraryViewModel(container) as T
-            modelClass.isAssignableFrom(SettingsViewModel::class.java) -> SettingsViewModel(container.settingsRepository) as T
+            modelClass.isAssignableFrom(SettingsViewModel::class.java) -> SettingsViewModel(
+                repository = container.settingsRepository,
+                audioInputDeviceRepository = container.audioInputDeviceRepository,
+            ) as T
             else -> error("Unknown ViewModel ${modelClass.name}")
         }
 }
-

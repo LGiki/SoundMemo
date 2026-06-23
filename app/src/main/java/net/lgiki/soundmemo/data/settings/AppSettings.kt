@@ -1,6 +1,7 @@
 package net.lgiki.soundmemo.data.settings
 
 import net.lgiki.soundmemo.data.storage.DEFAULT_RECORDING_NAME_TEMPLATE
+import net.lgiki.soundmemo.domain.recorder.AudioInputPreference
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 
 data class AppSettings(
@@ -9,6 +10,7 @@ data class AppSettings(
     val recordingFormat: RecordingFormat = RecordingFormat.M4a,
     val bitrate: Int = 128_000,
     val sampleRate: Int = 44_100,
+    val preferredAudioInput: AudioInputPreference? = null,
     val recordingNameTemplate: String = DEFAULT_RECORDING_NAME_TEMPLATE,
     val keepScreenAwake: Boolean = true,
     val recordLocation: Boolean = false,

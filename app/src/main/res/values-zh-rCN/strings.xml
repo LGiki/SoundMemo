@@ -25,6 +25,11 @@
     <string name="recorder_discard">放弃</string>
     <string name="recorder_saved_message">录音已保存。</string>
     <string name="recorder_start_failed">无法开始录音。</string>
+    <string name="recorder_audio_input_current">录音输入</string>
+    <string name="recorder_audio_input_preferred">首选输入</string>
+    <string name="recorder_audio_input_detecting">正在检测…</string>
+    <string name="recorder_audio_input_badge">%1$s · %2$s</string>
+    <string name="recorder_audio_input_content_desc">%1$s：%2$s</string>
 
     <!-- Library Screen -->
     <string name="library_title">录音库</string>
@@ -86,6 +91,15 @@
     <string name="settings_file_format_3gp">3GP (AMR-WB)</string>
     <string name="settings_file_format_wav">WAV (PCM)</string>
     <string name="settings_file_format_mp3">MP3</string>
+    <string name="settings_microphone">麦克风</string>
+    <string name="settings_microphone_automatic">自动</string>
+    <string name="settings_microphone_unavailable">%1$s 不可用</string>
+    <string name="settings_microphone_mediarecorder_compat">M4A、AAC 和 3GP 的输入选择需要 Android 9 或更高版本。</string>
+    <string name="settings_microphone_builtin">手机麦克风</string>
+    <string name="settings_microphone_bluetooth">蓝牙麦克风</string>
+    <string name="settings_microphone_usb">USB 麦克风</string>
+    <string name="settings_microphone_wired">耳机麦克风</string>
+    <string name="settings_microphone_external">外部麦克风</string>
     <string name="settings_bitrate">比特率</string>
     <string name="settings_bitrate_fixed_by_format">%1$s 使用固定的 %2$d kbps / %3$d kHz 编码</string>
     <string name="settings_file_name_template">默认文件名</string>

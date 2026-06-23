@@ -97,6 +97,8 @@ class RecordingService : LifecycleService() {
                 val recordingFormat = settings.recordingFormat
                 val recordingBitrate = recordingFormat.bitrateFor(settings.bitrate)
                 val recordingSampleRate = recordingFormat.sampleRateFor(settings.sampleRate)
+                val preferredAudioInput = settings.preferredAudioInput
+                val preferredAudioDevice = container.audioInputDeviceRepository.findPreferredDevice(preferredAudioInput)
                 val generatedName = RecordingNameTemplate.generate(
                     template = settings.recordingNameTemplate,
                     extension = recordingFormat.extension,
@@ -108,6 +110,7 @@ class RecordingService : LifecycleService() {
                         format = recordingFormat,
                         bitrate = recordingBitrate,
                         sampleRate = recordingSampleRate,
+                        preferredDevice = preferredAudioDevice,
                     )
                 } else {
                     MediaRecorderBackend(
@@ -118,6 +121,7 @@ class RecordingService : LifecycleService() {
                         sampleRate = recordingSampleRate,
                         location = location,
                         writeLocationToMediaFile = settings.writeLocationToMediaFile,
+                        preferredDevice = preferredAudioDevice,
                     )
                 }
                 file = createdFile
@@ -134,7 +138,13 @@ class RecordingService : LifecycleService() {
                 startedAt = SystemClock.elapsedRealtime()
                 pausedAt = 0L
                 pausedTotal = 0L
-                RecordingStateHolder.update(RecorderUiState(status = RecorderStatus.Recording))
+                RecordingStateHolder.update(
+                    RecorderUiState(
+                        status = RecorderStatus.Recording,
+                        preferredAudioInput = preferredAudioInput,
+                        actualAudioInput = createdRecorder.routedDevice,
+                    ),
+                )
                 ServiceCompat.startForeground(
                     this@RecordingService,
                     NOTIFICATION_ID,
@@ -245,10 +255,17 @@ class RecordingService : LifecycleService() {
     private fun startTicker() {
         ticker?.cancel()
         ticker = lifecycleScope.launch {
+            var routeRefreshTick = 0
             while (true) {
                 val current = RecordingStateHolder.state.value
                 val status = current.status
                 val amplitude = if (status == RecorderStatus.Recording) runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0) else 0
+                val refreshRoute = current.actualAudioInput == null || routeRefreshTick++ % ROUTE_REFRESH_TICKS == 0
+                val routedDevice = if (refreshRoute) {
+                    recorder?.routedDevice ?: current.actualAudioInput
+                } else {
+                    current.actualAudioInput
+                }
                 val waveform = if (status == RecorderStatus.Recording) {
                     (current.waveform + normalizedWaveformSample(amplitude)).takeLast(WAVEFORM_SAMPLE_COUNT)
                 } else {
@@ -259,6 +276,7 @@ class RecordingService : LifecycleService() {
                         elapsedMs = currentElapsed(),
                         amplitude = amplitude,
                         waveform = waveform,
+                        actualAudioInput = routedDevice,
                     ),
                 )
                 delay(250)
@@ -358,6 +376,7 @@ class RecordingService : LifecycleService() {
         private const val CHANNEL_ID = "recording"
         private const val NOTIFICATION_ID = 1001
         private const val MAX_PCM_AMPLITUDE = 32767f
+        private const val ROUTE_REFRESH_TICKS = 4
         const val ACTION_START = "net.lgiki.soundmemo.START_RECORDING"
         const val ACTION_PAUSE = "net.lgiki.soundmemo.PAUSE_RECORDING"
         const val ACTION_RESUME = "net.lgiki.soundmemo.RESUME_RECORDING"

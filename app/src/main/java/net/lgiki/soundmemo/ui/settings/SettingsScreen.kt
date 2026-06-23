@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -69,6 +70,7 @@ import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.WbSunny
@@ -84,7 +86,13 @@ import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
 import net.lgiki.soundmemo.domain.recorder.AacBitrateOptions
+import net.lgiki.soundmemo.domain.recorder.AudioInputDevice
+import net.lgiki.soundmemo.domain.recorder.AudioInputPreference
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
+import net.lgiki.soundmemo.domain.recorder.matches
+import net.lgiki.soundmemo.domain.recorder.matchesTypeAndName
+import net.lgiki.soundmemo.domain.recorder.normalizedAudioInputName
+import net.lgiki.soundmemo.ui.audioInputLabel
 
 private const val SOURCE_REPO_URL = "https://github.com/LGiki/SoundMemo"
 
@@ -96,6 +104,7 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val bitrateOptions by viewModel.bitrateOptions.collectAsStateWithLifecycle()
+    val audioInputDevices by viewModel.audioInputDevices.collectAsStateWithLifecycle()
     var openDialog by remember { mutableStateOf<SettingsDialog?>(null) }
     val context = LocalContext.current
     val versionCode = remember(context) {
@@ -186,6 +195,17 @@ fun SettingsScreen(
                         headline = stringResource(R.string.settings_file_format),
                         supporting = recordingFormatLabel(settings.recordingFormat),
                         onClick = { openDialog = SettingsDialog.RecordingFormat },
+                    )
+                    PreferenceDivider()
+                    PreferenceRow(
+                        leadingIcon = Icons.Default.Mic,
+                        headline = stringResource(R.string.settings_microphone),
+                        supporting = microphoneSupportingText(
+                            preference = settings.preferredAudioInput,
+                            devices = audioInputDevices,
+                            recordingFormat = settings.recordingFormat,
+                        ),
+                        onClick = { openDialog = SettingsDialog.Microphone },
                     )
                     PreferenceDivider()
                     PreferenceRow(
@@ -341,6 +361,23 @@ fun SettingsScreen(
             selected = settings.recordingFormat,
             onSelect = {
                 viewModel.setRecordingFormat(it)
+                openDialog = null
+            },
+            onDismiss = { openDialog = null },
+        )
+        SettingsDialog.Microphone -> SingleChoiceSettingsDialog(
+            title = stringResource(R.string.settings_microphone),
+            options = microphoneOptions(audioInputDevices),
+            selected = settings.preferredAudioInput,
+            isSelected = { option ->
+                microphoneOptionSelected(
+                    option = option,
+                    selected = settings.preferredAudioInput,
+                    devices = audioInputDevices,
+                )
+            },
+            onSelect = {
+                viewModel.setPreferredAudioInput(it)
                 openDialog = null
             },
             onDismiss = { openDialog = null },
@@ -578,6 +615,7 @@ private fun <T> SingleChoiceSettingsDialog(
     title: String,
     options: List<SettingsOption<T>>,
     selected: T,
+    isSelected: (T) -> Boolean = { option -> option == selected },
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -596,7 +634,7 @@ private fun <T> SingleChoiceSettingsDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(
-                            selected = option.value == selected,
+                            selected = isSelected(option.value),
                             onClick = { onSelect(option.value) },
                         )
                         Text(
@@ -821,6 +859,55 @@ private fun bitrateValuesFor(recordingFormat: RecordingFormat, deviceAacValues: 
     }
 
 @Composable
+private fun microphoneOptions(devices: List<AudioInputDevice>): List<SettingsOption<AudioInputPreference?>> {
+    val automatic = SettingsOption<AudioInputPreference?>(
+        value = null,
+        label = stringResource(R.string.settings_microphone_automatic),
+    )
+    return listOf(automatic) + devices.map { device ->
+        SettingsOption<AudioInputPreference?>(
+            value = device.preference,
+            label = audioInputLabel(type = device.type, productName = device.productName),
+        )
+    }
+}
+
+@Composable
+private fun microphoneSupportingText(
+    preference: AudioInputPreference?,
+    devices: List<AudioInputDevice>,
+    recordingFormat: RecordingFormat,
+): String {
+    val selectedText = when {
+        preference == null -> stringResource(R.string.settings_microphone_automatic)
+        devices.none { preference.matchesTypeAndName(it) } -> stringResource(
+            R.string.settings_microphone_unavailable,
+            audioInputLabel(type = preference.type, productName = preference.productName),
+        )
+        else -> audioInputLabel(type = preference.type, productName = preference.productName)
+    }
+    val compatibilityNote = Build.VERSION.SDK_INT < Build.VERSION_CODES.P && !recordingFormat.usesPcmRecorder
+    return if (compatibilityNote) {
+        "$selectedText\n${stringResource(R.string.settings_microphone_mediarecorder_compat)}"
+    } else {
+        selectedText
+    }
+}
+
+private fun microphoneOptionSelected(
+    option: AudioInputPreference?,
+    selected: AudioInputPreference?,
+    devices: List<AudioInputDevice>,
+): Boolean = when {
+    option == null || selected == null -> option == selected
+    devices.any { selected.matches(it) } -> option.id == selected.id &&
+        option.type == selected.type &&
+        normalizedAudioInputName(option.productName) == normalizedAudioInputName(selected.productName)
+    else -> option.type == selected.type &&
+        normalizedAudioInputName(option.productName) == normalizedAudioInputName(selected.productName)
+}
+
+@Composable
 private fun bitrateSupportingText(
     recordingFormat: RecordingFormat,
     bitrate: Int,
@@ -912,6 +999,7 @@ private enum class SettingsDialog {
     Theme,
     Language,
     RecordingFormat,
+    Microphone,
     Bitrate,
     FileNameTemplate,
     RewindSeconds,

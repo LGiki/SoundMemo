@@ -1,8 +1,10 @@
 package net.lgiki.soundmemo.service.audio
 
 import android.media.AudioFormat
+import android.media.AudioDeviceInfo
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.os.Build
 import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
@@ -10,6 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 import kotlin.math.max
+import net.lgiki.soundmemo.domain.recorder.AudioInputRoute
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 
 internal class PcmRecordingBackend(
@@ -17,6 +20,7 @@ internal class PcmRecordingBackend(
     private val format: RecordingFormat,
     private val bitrate: Int,
     private val sampleRate: Int,
+    private val preferredDevice: AudioDeviceInfo?,
 ) : AudioRecordingBackend {
     private val minBufferSize = AudioRecord.getMinBufferSize(
         sampleRate,
@@ -35,14 +39,25 @@ internal class PcmRecordingBackend(
     private val failure = AtomicReference<Throwable?>(null)
     @Volatile private var running = false
     @Volatile private var paused = false
+    @Volatile private var released = false
     private var writer: PcmAudioWriter? = null
     private var worker: Thread? = null
 
     override val maxAmplitude: Int
         get() = amplitude.getAndSet(0)
 
+    override val routedDevice: AudioInputRoute?
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !released) {
+            runCatching { audioRecord.routedDevice?.toAudioInputRoute() }.getOrNull()
+        } else {
+            null
+        }
+
     override fun start() {
         check(audioRecord.state == AudioRecord.STATE_INITIALIZED) { "AudioRecord could not initialize" }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            preferredDevice?.let { audioRecord.setPreferredDevice(it) }
+        }
         writer = when (format) {
             RecordingFormat.Wav -> WavAudioWriter(file, sampleRate)
             RecordingFormat.Mp3 -> Mp3AudioWriter(file, sampleRate, bitrate)
@@ -72,12 +87,13 @@ internal class PcmRecordingBackend(
         writer = null
         val closeFailure = runCatching { activeWriter?.close() }.exceptionOrNull()
         val recordingFailure = failure.get()
-        release()
         recordingFailure?.let { throw it }
         closeFailure?.let { throw it }
     }
 
     override fun release() {
+        if (released) return
+        released = true
         running = false
         runCatching { audioRecord.release() }
         runCatching { writer?.close() }

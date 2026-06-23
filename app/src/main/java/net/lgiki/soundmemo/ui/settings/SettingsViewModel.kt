@@ -15,10 +15,16 @@ import net.lgiki.soundmemo.data.settings.SettingsRepository
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.data.storage.DEFAULT_RECORDING_NAME_TEMPLATE
 import net.lgiki.soundmemo.domain.recorder.AacBitrateOptions
+import net.lgiki.soundmemo.domain.recorder.AudioInputDevice
+import net.lgiki.soundmemo.domain.recorder.AudioInputDeviceRepository
+import net.lgiki.soundmemo.domain.recorder.AudioInputPreference
 import net.lgiki.soundmemo.domain.recorder.BitrateOptions
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 
-class SettingsViewModel(private val repository: SettingsRepository) : ViewModel() {
+class SettingsViewModel(
+    private val repository: SettingsRepository,
+    audioInputDeviceRepository: AudioInputDeviceRepository,
+) : ViewModel() {
     val settings = repository.settings.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -33,6 +39,12 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     )
     val bitrateOptions: StateFlow<BitrateOptions> = _bitrateOptions.asStateFlow()
     private var bitrateOptionsReady = false
+
+    val audioInputDevices: StateFlow<List<AudioInputDevice>> = audioInputDeviceRepository.devices.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        audioInputDeviceRepository.currentDevices(),
+    )
 
     private val _localeChanged = MutableStateFlow<String?>(null)
     val localeChanged: StateFlow<String?> = _localeChanged.asStateFlow()
@@ -70,6 +82,7 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch { repository.setThemeMode(mode) }
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { repository.setDynamicColor(enabled) }
     fun setRecordingFormat(format: RecordingFormat) = viewModelScope.launch { repository.setRecordingFormat(format) }
+    fun setPreferredAudioInput(preference: AudioInputPreference?) = viewModelScope.launch { repository.setPreferredAudioInput(preference) }
     fun setBitrate(value: Int) = viewModelScope.launch { repository.setBitrate(value) }
     fun setRecordingNameTemplate(template: String) = viewModelScope.launch { repository.setRecordingNameTemplate(template) }
     fun resetRecordingNameTemplate() = viewModelScope.launch { repository.setRecordingNameTemplate(DEFAULT_RECORDING_NAME_TEMPLATE) }

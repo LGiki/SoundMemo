@@ -5,6 +5,7 @@ import net.lgiki.soundmemo.data.db.SoundMemoDatabase
 import net.lgiki.soundmemo.data.repository.RecordingRepository
 import net.lgiki.soundmemo.data.settings.SettingsRepository
 import net.lgiki.soundmemo.data.storage.RecordingStorage
+import net.lgiki.soundmemo.domain.recorder.AudioInputDeviceRepository
 
 class SoundMemoContainer(context: Context) {
     val appContext: Context = context.applicationContext
@@ -13,4 +14,5 @@ class SoundMemoContainer(context: Context) {
     val recordingRepository = RecordingRepository(database.recordingDao())
     val settingsRepository = SettingsRepository(appContext)
     val recordingStorage = RecordingStorage(appContext)
+    val audioInputDeviceRepository = AudioInputDeviceRepository(appContext)
 }

@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -47,11 +49,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.lgiki.soundmemo.R
+import net.lgiki.soundmemo.domain.recorder.AudioInputPreference
+import net.lgiki.soundmemo.domain.recorder.AudioInputRoute
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.WAVEFORM_SAMPLE_COUNT
+import net.lgiki.soundmemo.ui.audioInputLabel
 import net.lgiki.soundmemo.util.formatDuration
 
 private const val MIN_WAVEFORM_LEVEL = 0.08f
@@ -64,6 +70,7 @@ fun RecorderScreen(
 ) {
     val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val preferredAudioInput by viewModel.preferredAudioInput.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -89,6 +96,8 @@ fun RecorderScreen(
                 status = state.status,
                 message = state.message,
                 waveform = state.waveform,
+                preferredAudioInput = state.preferredAudioInput ?: preferredAudioInput,
+                actualAudioInput = state.actualAudioInput,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -111,6 +120,8 @@ private fun RecordingStatusPanel(
     status: RecorderStatus,
     message: String?,
     waveform: List<Float>,
+    preferredAudioInput: AudioInputPreference?,
+    actualAudioInput: AudioInputRoute?,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -131,12 +142,77 @@ private fun RecordingStatusPanel(
                 style = MaterialTheme.typography.displayMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
+            AudioInputLine(
+                status = status,
+                preferredAudioInput = preferredAudioInput,
+                actualAudioInput = actualAudioInput,
+            )
             RecordingWaveform(
                 waveform = waveform,
                 active = status == RecorderStatus.Recording,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AudioInputLine(
+    status: RecorderStatus,
+    preferredAudioInput: AudioInputPreference?,
+    actualAudioInput: AudioInputRoute?,
+) {
+    val active = status == RecorderStatus.Recording || status == RecorderStatus.Paused
+    val title = if (active) {
+        stringResource(R.string.recorder_audio_input_current)
+    } else {
+        stringResource(R.string.recorder_audio_input_preferred)
+    }
+    val device = when {
+        active && actualAudioInput != null -> audioInputLabel(actualAudioInput.type, actualAudioInput.productName)
+        active -> stringResource(R.string.recorder_audio_input_detecting)
+        preferredAudioInput != null -> audioInputLabel(preferredAudioInput.type, preferredAudioInput.productName)
+        else -> stringResource(R.string.settings_microphone_automatic)
+    }
+    val container = if (active && actualAudioInput != null) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val content = if (active && actualAudioInput != null) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val description = stringResource(R.string.recorder_audio_input_content_desc, title, device)
+
+    Surface(
+        shape = CircleShape,
+        color = container,
+        contentColor = content,
+        modifier = Modifier
+            .widthIn(max = 320.dp)
+            .heightIn(min = 36.dp)
+            .semantics { contentDescription = description },
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Mic,
+                contentDescription = null,
+                modifier = Modifier.size(17.dp),
+            )
+            Text(
+                text = stringResource(R.string.recorder_audio_input_badge, title, device),
+                style = MaterialTheme.typography.labelLarge,
+                color = content,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

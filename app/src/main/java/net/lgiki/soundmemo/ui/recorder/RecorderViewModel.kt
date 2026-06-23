@@ -7,9 +7,13 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.lgiki.soundmemo.SoundMemoContainer
+import net.lgiki.soundmemo.domain.recorder.AudioInputPreference
 import net.lgiki.soundmemo.domain.recorder.RecordingLocation
 import net.lgiki.soundmemo.domain.recorder.RecordingLocationProvider
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
@@ -18,9 +22,12 @@ import net.lgiki.soundmemo.domain.recorder.RecordingStateHolder
 import net.lgiki.soundmemo.service.RecordingService
 
 class RecorderViewModel(
-    @Suppress("unused") private val container: SoundMemoContainer,
+    private val container: SoundMemoContainer,
 ) : ViewModel() {
     val state: StateFlow<RecorderUiState> = RecordingStateHolder.state
+    val preferredAudioInput: StateFlow<AudioInputPreference?> = container.settingsRepository.settings
+        .map { it.preferredAudioInput }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun start(context: Context, location: RecordingLocation? = null) {
         ContextCompat.startForegroundService(context, RecordingService.startIntent(context, RecordingService.ACTION_START, location))

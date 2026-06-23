@@ -25,6 +25,11 @@
     <string name="recorder_discard">Discard</string>
     <string name="recorder_saved_message">Recording saved.</string>
     <string name="recorder_start_failed">Recording could not start.</string>
+    <string name="recorder_audio_input_current">Recording input</string>
+    <string name="recorder_audio_input_preferred">Preferred input</string>
+    <string name="recorder_audio_input_detecting">Detecting…</string>
+    <string name="recorder_audio_input_badge">%1$s · %2$s</string>
+    <string name="recorder_audio_input_content_desc">%1$s: %2$s</string>
 
     <!-- Library Screen -->
     <string name="library_title">Library</string>
@@ -86,6 +91,15 @@
     <string name="settings_file_format_3gp">3GP (AMR-WB)</string>
     <string name="settings_file_format_wav">WAV (PCM)</string>
     <string name="settings_file_format_mp3">MP3</string>
+    <string name="settings_microphone">Microphone</string>
+    <string name="settings_microphone_automatic">Automatic</string>
+    <string name="settings_microphone_unavailable">%1$s unavailable</string>
+    <string name="settings_microphone_mediarecorder_compat">M4A, AAC, and 3GP input selection requires Android 9 or later.</string>
+    <string name="settings_microphone_builtin">Phone microphone</string>
+    <string name="settings_microphone_bluetooth">Bluetooth microphone</string>
+    <string name="settings_microphone_usb">USB microphone</string>
+    <string name="settings_microphone_wired">Headset microphone</string>
+    <string name="settings_microphone_external">External microphone</string>
     <string name="settings_bitrate">Bitrate</string>
     <string name="settings_bitrate_fixed_by_format">%1$s uses fixed %2$d kbps / %3$d kHz encoding</string>
     <string name="settings_file_name_template">Default file name</string>

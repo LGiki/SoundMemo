@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import net.lgiki.soundmemo.data.storage.DEFAULT_RECORDING_NAME_TEMPLATE
+import net.lgiki.soundmemo.domain.recorder.AudioInputPreference
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 
 private val Context.settingsDataStore by preferencesDataStore("soundmemo_settings")
@@ -24,6 +25,11 @@ class SettingsRepository(context: Context) {
             recordingFormat = RecordingFormat.fromStorageValue(prefs[RECORDING_FORMAT]),
             bitrate = prefs[BITRATE] ?: 128_000,
             sampleRate = prefs[SAMPLE_RATE] ?: 44_100,
+            preferredAudioInput = preferredAudioInput(
+                id = prefs[PREFERRED_AUDIO_INPUT_ID],
+                type = prefs[PREFERRED_AUDIO_INPUT_TYPE],
+                productName = prefs[PREFERRED_AUDIO_INPUT_NAME],
+            ),
             recordingNameTemplate = normalizeRecordingNameTemplate(prefs[RECORDING_NAME_TEMPLATE]),
             keepScreenAwake = prefs[KEEP_SCREEN_AWAKE] ?: true,
             recordLocation = prefs[RECORD_LOCATION] ?: false,
@@ -52,6 +58,20 @@ class SettingsRepository(context: Context) {
         dataStore.edit { it[RECORDING_FORMAT] = format.storageValue }
     }
 
+    suspend fun setPreferredAudioInput(preference: AudioInputPreference?) {
+        dataStore.edit {
+            if (preference == null) {
+                it.remove(PREFERRED_AUDIO_INPUT_ID)
+                it.remove(PREFERRED_AUDIO_INPUT_TYPE)
+                it.remove(PREFERRED_AUDIO_INPUT_NAME)
+            } else {
+                preference.id?.let { id -> it[PREFERRED_AUDIO_INPUT_ID] = id } ?: it.remove(PREFERRED_AUDIO_INPUT_ID)
+                it[PREFERRED_AUDIO_INPUT_TYPE] = preference.type
+                it[PREFERRED_AUDIO_INPUT_NAME] = preference.productName
+            }
+        }
+    }
+
     suspend fun setRecordingNameTemplate(template: String) {
         dataStore.edit { it[RECORDING_NAME_TEMPLATE] = template.trim().ifBlank { DEFAULT_RECORDING_NAME_TEMPLATE } }
     }
@@ -59,6 +79,11 @@ class SettingsRepository(context: Context) {
     private fun normalizeRecordingNameTemplate(template: String?): String = when (template) {
         null, OLD_DEFAULT_RECORDING_NAME_TEMPLATE -> DEFAULT_RECORDING_NAME_TEMPLATE
         else -> template
+    }
+
+    private fun preferredAudioInput(id: Int?, type: Int?, productName: String?): AudioInputPreference? {
+        if (type == null || productName.isNullOrBlank()) return null
+        return AudioInputPreference(id = id, type = type, productName = productName)
     }
 
     suspend fun setKeepScreenAwake(enabled: Boolean) {
@@ -106,6 +131,9 @@ class SettingsRepository(context: Context) {
         val RECORDING_FORMAT = stringPreferencesKey("recording_format")
         val BITRATE = intPreferencesKey("bitrate")
         val SAMPLE_RATE = intPreferencesKey("sample_rate")
+        val PREFERRED_AUDIO_INPUT_ID = intPreferencesKey("preferred_audio_input_id")
+        val PREFERRED_AUDIO_INPUT_TYPE = intPreferencesKey("preferred_audio_input_type")
+        val PREFERRED_AUDIO_INPUT_NAME = stringPreferencesKey("preferred_audio_input_name")
         val RECORDING_NAME_TEMPLATE = stringPreferencesKey("recording_name_template")
         val KEEP_SCREEN_AWAKE = booleanPreferencesKey("keep_screen_awake")
         val RECORD_LOCATION = booleanPreferencesKey("record_location")
