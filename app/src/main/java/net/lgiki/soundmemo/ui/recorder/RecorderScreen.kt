@@ -17,10 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -106,7 +103,7 @@ fun RecorderScreen(
             RecordingStatusPanel(
                 elapsedMs = state.elapsedMs,
                 status = state.status,
-                message = state.message,
+
                 waveform = state.waveform,
                 preferredAudioInput = state.preferredAudioInput ?: preferredAudioInput,
                 actualAudioInput = state.actualAudioInput,
@@ -142,7 +139,6 @@ fun RecorderScreen(
 private fun RecordingStatusPanel(
     elapsedMs: Long,
     status: RecorderStatus,
-    message: String?,
     waveform: List<Float>,
     preferredAudioInput: AudioInputPreference?,
     actualAudioInput: AudioInputRoute?,
@@ -161,7 +157,7 @@ private fun RecordingStatusPanel(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            StatusPill(status = status, message = message)
+
             Text(
                 text = formatDuration(elapsedMs),
                 style = MaterialTheme.typography.displayMedium,
@@ -336,55 +332,6 @@ private fun audioInputPreferenceSelected(
     }
 }
 
-@Composable
-private fun StatusPill(status: RecorderStatus, message: String?) {
-    val isError = status == RecorderStatus.Error
-    val isRecording = status == RecorderStatus.Recording
-    val container = when {
-        isError -> MaterialTheme.colorScheme.errorContainer
-        isRecording -> MaterialTheme.colorScheme.error
-        status == RecorderStatus.Saved -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surfaceContainerHigh
-    }
-    val content = when {
-        isError -> MaterialTheme.colorScheme.onErrorContainer
-        isRecording -> MaterialTheme.colorScheme.onError
-        status == RecorderStatus.Saved -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Surface(
-        shape = CircleShape,
-        color = container,
-        contentColor = content,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Icon(
-                imageVector = when {
-                    isError -> Icons.Default.Error
-                    status == RecorderStatus.Saved -> Icons.Default.CheckCircle
-                    else -> Icons.Default.FiberManualRecord
-                },
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-            )
-            Text(
-                text = when (status) {
-                    RecorderStatus.Idle -> stringResource(R.string.recorder_status_idle)
-                    RecorderStatus.Recording -> stringResource(R.string.recorder_status_recording)
-                    RecorderStatus.Paused -> stringResource(R.string.recorder_status_paused)
-                    RecorderStatus.Saving -> stringResource(R.string.recorder_status_saving)
-                    RecorderStatus.Saved -> stringResource(R.string.recorder_status_saved)
-                    RecorderStatus.Error -> message ?: stringResource(R.string.recorder_status_error)
-                },
-                style = MaterialTheme.typography.labelLarge,
-            )
-        }
-    }
-}
 
 @Composable
 private fun RecorderControls(
