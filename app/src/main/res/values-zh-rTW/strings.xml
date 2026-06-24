@@ -28,7 +28,7 @@
     <string name="recorder_saved_message">錄音已儲存。</string>
     <string name="recorder_start_failed">無法開始錄音。</string>
     <string name="recorder_audio_input_current">錄音輸入</string>
-    <string name="recorder_audio_input_preferred">偏好輸入</string>
+    <string name="recorder_audio_input_preferred">音訊輸入裝置</string>
     <string name="recorder_audio_input_detecting">正在偵測…</string>
     <string name="recorder_audio_input_badge">%1$s · %2$s</string>
     <string name="recorder_audio_input_content_desc">%1$s：%2$s</string>
@@ -93,7 +93,7 @@
     <string name="settings_file_format_3gp">3GP (AMR-WB)</string>
     <string name="settings_file_format_wav">WAV (PCM)</string>
     <string name="settings_file_format_mp3">MP3</string>
-    <string name="settings_microphone">麥克風</string>
+    <string name="settings_microphone">音訊輸入裝置</string>
     <string name="settings_microphone_automatic">自動</string>
     <string name="settings_microphone_unavailable">%1$s 無法使用</string>
     <string name="settings_microphone_mediarecorder_compat">M4A、AAC 和 3GP 的輸入選擇需要 Android 9 或更新版本。</string>

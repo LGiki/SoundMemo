@@ -28,7 +28,7 @@
     <string name="recorder_saved_message">Recording saved.</string>
     <string name="recorder_start_failed">Recording could not start.</string>
     <string name="recorder_audio_input_current">Recording input</string>
-    <string name="recorder_audio_input_preferred">Preferred input</string>
+    <string name="recorder_audio_input_preferred">Audio input device</string>
     <string name="recorder_audio_input_detecting">Detecting…</string>
     <string name="recorder_audio_input_badge">%1$s · %2$s</string>
     <string name="recorder_audio_input_content_desc">%1$s: %2$s</string>
@@ -93,7 +93,7 @@
     <string name="settings_file_format_3gp">3GP (AMR-WB)</string>
     <string name="settings_file_format_wav">WAV (PCM)</string>
     <string name="settings_file_format_mp3">MP3</string>
-    <string name="settings_microphone">Microphone</string>
+    <string name="settings_microphone">Audio input device</string>
     <string name="settings_microphone_automatic">Automatic</string>
     <string name="settings_microphone_unavailable">%1$s unavailable</string>
     <string name="settings_microphone_mediarecorder_compat">M4A, AAC, and 3GP input selection requires Android 9 or later.</string>
