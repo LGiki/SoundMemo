@@ -22,6 +22,12 @@ class SettingsRepository(context: Context) {
         AppSettings(
             themeMode = prefs[THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.System,
             dynamicColor = prefs[DYNAMIC_COLOR] ?: true,
+            recorderVisualization = prefs[RECORDER_VISUALIZATION]
+                ?.let { runCatching { RecorderVisualization.valueOf(it) }.getOrNull() }
+                ?: RecorderVisualization.Waveform,
+            vuMeterValueDisplay = prefs[VU_METER_VALUE_DISPLAY]
+                ?.let { runCatching { VuMeterValueDisplay.valueOf(it) }.getOrNull() }
+                ?: VuMeterValueDisplay.Percent,
             recordingFormat = RecordingFormat.fromStorageValue(prefs[RECORDING_FORMAT]),
             bitrate = prefs[BITRATE] ?: 128_000,
             sampleRate = prefs[SAMPLE_RATE] ?: 44_100,
@@ -48,6 +54,14 @@ class SettingsRepository(context: Context) {
 
     suspend fun setDynamicColor(enabled: Boolean) {
         dataStore.edit { it[DYNAMIC_COLOR] = enabled }
+    }
+
+    suspend fun setRecorderVisualization(visualization: RecorderVisualization) {
+        dataStore.edit { it[RECORDER_VISUALIZATION] = visualization.name }
+    }
+
+    suspend fun setVuMeterValueDisplay(display: VuMeterValueDisplay) {
+        dataStore.edit { it[VU_METER_VALUE_DISPLAY] = display.name }
     }
 
     suspend fun setBitrate(value: Int) {
@@ -128,6 +142,8 @@ class SettingsRepository(context: Context) {
     private companion object {
         val THEME = stringPreferencesKey("theme")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val RECORDER_VISUALIZATION = stringPreferencesKey("recorder_visualization")
+        val VU_METER_VALUE_DISPLAY = stringPreferencesKey("vu_meter_value_display")
         val RECORDING_FORMAT = stringPreferencesKey("recording_format")
         val BITRATE = intPreferencesKey("bitrate")
         val SAMPLE_RATE = intPreferencesKey("sample_rate")

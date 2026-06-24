@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,12 +13,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -28,6 +33,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -47,7 +53,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -57,6 +66,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.lgiki.soundmemo.R
+import net.lgiki.soundmemo.data.settings.RecorderVisualization
+import net.lgiki.soundmemo.data.settings.VuMeterValueDisplay
 import net.lgiki.soundmemo.domain.recorder.AudioInputDevice
 import net.lgiki.soundmemo.domain.recorder.AudioInputPreference
 import net.lgiki.soundmemo.domain.recorder.AudioInputRoute
@@ -66,8 +77,13 @@ import net.lgiki.soundmemo.domain.recorder.matches
 import net.lgiki.soundmemo.domain.recorder.normalizedAudioInputName
 import net.lgiki.soundmemo.ui.audioInputLabel
 import net.lgiki.soundmemo.util.formatDuration
+import kotlin.math.log10
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 private const val MIN_WAVEFORM_LEVEL = 0.08f
+private const val VU_SEGMENT_COUNT = 20
+private const val MAX_VU_AMPLITUDE = 32767f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,6 +94,8 @@ fun RecorderScreen(
     val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
     val preferredAudioInput by viewModel.preferredAudioInput.collectAsStateWithLifecycle()
+    val recorderVisualization by viewModel.recorderVisualization.collectAsStateWithLifecycle()
+    val vuMeterValueDisplay by viewModel.vuMeterValueDisplay.collectAsStateWithLifecycle()
     val audioInputDevices by viewModel.audioInputDevices.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var showAudioInputDialog by remember { mutableStateOf(false) }
@@ -104,11 +122,15 @@ fun RecorderScreen(
             RecordingStatusPanel(
                 elapsedMs = state.elapsedMs,
                 status = state.status,
-
+                amplitude = state.amplitude,
                 waveform = state.waveform,
+                recorderVisualization = recorderVisualization,
+                vuMeterValueDisplay = vuMeterValueDisplay,
                 preferredAudioInput = state.preferredAudioInput ?: preferredAudioInput,
                 actualAudioInput = state.actualAudioInput,
                 onPreferredAudioInputClick = { showAudioInputDialog = true },
+                onRecorderVisualizationChange = viewModel::setRecorderVisualization,
+                onVuMeterValueClick = viewModel::cycleVuMeterValueDisplay,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -149,10 +171,15 @@ fun RecorderScreen(
 private fun RecordingStatusPanel(
     elapsedMs: Long,
     status: RecorderStatus,
+    amplitude: Int,
     waveform: List<Float>,
+    recorderVisualization: RecorderVisualization,
+    vuMeterValueDisplay: VuMeterValueDisplay,
     preferredAudioInput: AudioInputPreference?,
     actualAudioInput: AudioInputRoute?,
     onPreferredAudioInputClick: () -> Unit,
+    onRecorderVisualizationChange: (RecorderVisualization) -> Unit,
+    onVuMeterValueClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -163,30 +190,69 @@ private fun RecordingStatusPanel(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = 16.dp, vertical = 20.dp),
         ) {
-
-            Text(
-                text = formatDuration(elapsedMs),
-                style = MaterialTheme.typography.displayMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+            RecordingHeaderRow(
+                elapsedMs = elapsedMs,
+                recorderVisualization = recorderVisualization,
+                onRecorderVisualizationChange = onRecorderVisualizationChange,
             )
             AudioInputLine(
                 status = status,
                 preferredAudioInput = preferredAudioInput,
                 actualAudioInput = actualAudioInput,
                 onPreferredAudioInputClick = onPreferredAudioInputClick,
-            )
-            RecordingWaveform(
-                waveform = waveform,
-                status = status,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .padding(top = 12.dp),
             )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(top = 20.dp),
+            ) {
+                when (recorderVisualization) {
+                    RecorderVisualization.Waveform -> RecordingWaveform(
+                        waveform = waveform,
+                        status = status,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    RecorderVisualization.VuMeter -> RecordingVuMeter(
+                        amplitude = amplitude,
+                        status = status,
+                        valueDisplay = vuMeterValueDisplay,
+                        onValueClick = onVuMeterValueClick,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun RecordingHeaderRow(
+    elapsedMs: Long,
+    recorderVisualization: RecorderVisualization,
+    onRecorderVisualizationChange: (RecorderVisualization) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Spacer(modifier = Modifier.width(48.dp))
+        Text(
+            text = formatDuration(elapsedMs),
+            style = MaterialTheme.typography.displayMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f),
+        )
+        RecorderVisualizationIconButton(
+            visualization = recorderVisualization,
+            onVisualizationChange = onRecorderVisualizationChange,
+        )
     }
 }
 
@@ -196,6 +262,7 @@ private fun AudioInputLine(
     preferredAudioInput: AudioInputPreference?,
     actualAudioInput: AudioInputRoute?,
     onPreferredAudioInputClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val active = status == RecorderStatus.Recording || status == RecorderStatus.Paused
     val title = if (active) {
@@ -221,16 +288,20 @@ private fun AudioInputLine(
     }
     val description = stringResource(R.string.recorder_audio_input_content_desc, title, device)
 
-    Surface(
-        shape = CircleShape,
-        color = container,
-        contentColor = content,
-        modifier = Modifier
-            .widthIn(max = 320.dp)
-            .heightIn(min = 36.dp)
-            .then(if (!active) Modifier.clickable(onClick = onPreferredAudioInputClick) else Modifier)
-            .semantics { contentDescription = description },
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.Center,
     ) {
+        Surface(
+            shape = CircleShape,
+            color = container,
+            contentColor = content,
+            modifier = Modifier
+                .widthIn(max = 320.dp)
+                .heightIn(min = 36.dp)
+                .then(if (!active) Modifier.clickable(onClick = onPreferredAudioInputClick) else Modifier)
+                .semantics { contentDescription = description },
+        ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -257,6 +328,41 @@ private fun AudioInputLine(
                 )
             }
         }
+        }
+    }
+}
+
+@Composable
+private fun RecorderVisualizationIconButton(
+    visualization: RecorderVisualization,
+    onVisualizationChange: (RecorderVisualization) -> Unit,
+) {
+    val showingVuMeter = visualization == RecorderVisualization.VuMeter
+    val contentDescription = stringResource(
+        if (showingVuMeter) {
+            R.string.recorder_switch_to_waveform
+        } else {
+            R.string.recorder_switch_to_vu_meter
+        },
+    )
+
+    IconButton(
+        onClick = {
+            onVisualizationChange(
+                if (showingVuMeter) RecorderVisualization.Waveform else RecorderVisualization.VuMeter,
+            )
+        },
+        modifier = Modifier.size(48.dp),
+    ) {
+        Icon(
+            imageVector = if (showingVuMeter) {
+                Icons.AutoMirrored.Filled.ShowChart
+            } else {
+                Icons.Default.GraphicEq
+            },
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.primary,
+        )
     }
 }
 
@@ -458,6 +564,129 @@ private fun StopButton(onClick: () -> Unit) {
     ) {
         Icon(Icons.Default.Stop, contentDescription = stringResource(R.string.recorder_stop_save), modifier = Modifier.size(30.dp))
     }
+}
+
+@Composable
+private fun RecordingVuMeter(
+    amplitude: Int,
+    status: RecorderStatus,
+    valueDisplay: VuMeterValueDisplay,
+    onValueClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val vuMeterDesc = stringResource(R.string.recorder_vu_meter_desc)
+    val linearLevel = if (status == RecorderStatus.Recording) {
+        (amplitude / MAX_VU_AMPLITUDE).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    val level = sqrt(linearLevel).coerceIn(0f, 1f)
+    val valueText = VuMeterValueText(
+        display = valueDisplay,
+        linearLevel = linearLevel,
+        visibleLevel = level,
+    )
+    val valueDescription = stringResource(R.string.recorder_vu_meter_value_desc, valueText)
+    val activeSegmentCount = if (level > 0f) {
+        (level * VU_SEGMENT_COUNT).toInt().coerceIn(1, VU_SEGMENT_COUNT)
+    } else {
+        0
+    }
+    val inactiveColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f)
+    val lowColor = MaterialTheme.colorScheme.primary
+    val mediumColor = MaterialTheme.colorScheme.tertiary
+    val highColor = MaterialTheme.colorScheme.error
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .clickable(onClick = onValueClick)
+                .semantics { contentDescription = valueDescription },
+        ) {
+            Text(
+                text = valueText,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
+            )
+        }
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .semantics { contentDescription = vuMeterDesc },
+        ) {
+            val gap = 4.dp.toPx()
+            val segmentWidth = ((size.width - gap * (VU_SEGMENT_COUNT - 1)) / VU_SEGMENT_COUNT).coerceAtLeast(0f)
+            val meterHeight = 44.dp.toPx().coerceAtMost(size.height)
+            val top = (size.height - meterHeight) / 2f
+            val cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+
+            repeat(VU_SEGMENT_COUNT) { index ->
+                val x = index * (segmentWidth + gap)
+                val color = if (index < activeSegmentCount) {
+                    vuSegmentColor(
+                        index = index,
+                        lowColor = lowColor,
+                        mediumColor = mediumColor,
+                        highColor = highColor,
+                    )
+                } else {
+                    inactiveColor
+                }
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(x, top),
+                    size = Size(segmentWidth, meterHeight),
+                    cornerRadius = cornerRadius,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VuMeterValueText(
+    display: VuMeterValueDisplay,
+    linearLevel: Float,
+    visibleLevel: Float,
+): String {
+    val percent = (visibleLevel * 100).roundToInt().coerceIn(0, 100)
+    val decibels = if (linearLevel > 0f) {
+        (20f * log10(linearLevel)).roundToInt().coerceAtLeast(-120)
+    } else {
+        null
+    }
+    val percentText = stringResource(R.string.recorder_vu_meter_value_percent, percent)
+    val decibelText = decibels?.let {
+        stringResource(R.string.recorder_vu_meter_value_db, it)
+    } ?: stringResource(R.string.recorder_vu_meter_value_db_silent)
+    return when (display) {
+        VuMeterValueDisplay.Percent -> percentText
+        VuMeterValueDisplay.Decibels -> decibelText
+        VuMeterValueDisplay.PercentAndDecibels -> stringResource(
+            R.string.recorder_vu_meter_value_combined,
+            percentText,
+            decibelText,
+        )
+    }
+}
+
+private fun vuSegmentColor(
+    index: Int,
+    lowColor: Color,
+    mediumColor: Color,
+    highColor: Color,
+): Color = when {
+    index >= 17 -> highColor
+    index >= 13 -> mediumColor
+    else -> lowColor
 }
 
 @Composable

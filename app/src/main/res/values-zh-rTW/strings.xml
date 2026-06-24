@@ -11,6 +11,16 @@
     <!-- Recorder Screen -->
     <string name="recorder_title">SoundMemo</string>
     <string name="recorder_waveform_desc">錄音波形視覺化</string>
+    <string name="recorder_vu_meter_desc">錄音 VU 表視覺化</string>
+    <string name="recorder_vu_meter_toggle">VU 表</string>
+    <string name="recorder_vu_meter_toggle_desc">顯示即時輸入電平，而不是波形</string>
+    <string name="recorder_switch_to_waveform">顯示波形</string>
+    <string name="recorder_switch_to_vu_meter">顯示 VU 表</string>
+    <string name="recorder_vu_meter_value_desc">輸入電平：%1$s。點按可切換數值類型。</string>
+    <string name="recorder_vu_meter_value_percent">%1$d%%</string>
+    <string name="recorder_vu_meter_value_db">%1$d dB</string>
+    <string name="recorder_vu_meter_value_db_silent">-∞ dB</string>
+    <string name="recorder_vu_meter_value_combined">%1$s · %2$s</string>
     <string name="recorder_status_idle">準備錄音</string>
     <string name="recorder_status_recording">錄音中</string>
     <string name="recorder_status_paused">已暫停</string>
