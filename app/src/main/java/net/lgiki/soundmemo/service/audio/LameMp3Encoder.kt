@@ -3,8 +3,9 @@ package net.lgiki.soundmemo.service.audio
 internal class LameMp3Encoder(
     sampleRate: Int,
     bitrate: Int,
+    channelCount: Int,
 ) : AutoCloseable {
-    private var handle: Long = nativeInit(sampleRate, bitrate / 1000)
+    private var handle: Long = nativeInit(sampleRate, bitrate / 1000, channelCount)
 
     init {
         check(handle != 0L) { "LAME encoder could not initialize" }
@@ -36,7 +37,7 @@ internal class LameMp3Encoder(
         return activeHandle
     }
 
-    private external fun nativeInit(sampleRate: Int, bitrateKbps: Int): Long
+    private external fun nativeInit(sampleRate: Int, bitrateKbps: Int, channelCount: Int): Long
     private external fun nativeEncode(handle: Long, samples: ShortArray, sampleCount: Int): ByteArray?
     private external fun nativeFlush(handle: Long): ByteArray?
     private external fun nativeClose(handle: Long)

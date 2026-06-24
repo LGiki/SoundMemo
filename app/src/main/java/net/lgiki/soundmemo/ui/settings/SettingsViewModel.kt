@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.lgiki.soundmemo.data.settings.AppSettings
+import net.lgiki.soundmemo.data.settings.RecordingChannelMode
 import net.lgiki.soundmemo.data.settings.SettingsRepository
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.data.storage.DEFAULT_RECORDING_NAME_TEMPLATE
@@ -82,6 +83,7 @@ class SettingsViewModel(
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch { repository.setThemeMode(mode) }
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { repository.setDynamicColor(enabled) }
     fun setRecordingFormat(format: RecordingFormat) = viewModelScope.launch { repository.setRecordingFormat(format) }
+    fun setRecordingChannelMode(mode: RecordingChannelMode) = viewModelScope.launch { repository.setRecordingChannelMode(mode) }
     fun setPreferredAudioInput(preference: AudioInputPreference?) = viewModelScope.launch { repository.setPreferredAudioInput(preference) }
     fun setBitrate(value: Int) = viewModelScope.launch { repository.setBitrate(value) }
     fun setRecordingNameTemplate(template: String) = viewModelScope.launch { repository.setRecordingNameTemplate(template) }

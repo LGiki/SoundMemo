@@ -10,6 +10,7 @@ data class AppSettings(
     val recorderVisualization: RecorderVisualization = RecorderVisualization.Waveform,
     val vuMeterValueDisplay: VuMeterValueDisplay = VuMeterValueDisplay.Percent,
     val recordingFormat: RecordingFormat = RecordingFormat.M4a,
+    val recordingChannelMode: RecordingChannelMode = RecordingChannelMode.Mono,
     val bitrate: Int = 128_000,
     val sampleRate: Int = 44_100,
     val preferredAudioInput: AudioInputPreference? = null,
@@ -39,4 +40,9 @@ enum class VuMeterValueDisplay {
     Percent,
     Decibels,
     PercentAndDecibels,
+}
+
+enum class RecordingChannelMode {
+    Mono,
+    Stereo,
 }

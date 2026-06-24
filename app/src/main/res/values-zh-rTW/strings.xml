@@ -112,6 +112,9 @@
     <string name="settings_microphone_usb">USB 麥克風</string>
     <string name="settings_microphone_wired">耳機麥克風</string>
     <string name="settings_microphone_external">外接麥克風</string>
+    <string name="settings_recording_channels">錄音聲道</string>
+    <string name="settings_recording_channels_mono">單聲道</string>
+    <string name="settings_recording_channels_stereo">立體聲（支援時）</string>
     <string name="settings_bitrate">位元率</string>
     <string name="settings_bitrate_fixed_by_format">%1$s 使用固定的 %2$d kbps / %3$d kHz 編碼</string>
     <string name="settings_file_name_template">預設檔案名稱</string>

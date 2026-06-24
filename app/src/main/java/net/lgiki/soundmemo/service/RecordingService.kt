@@ -39,6 +39,7 @@ import net.lgiki.soundmemo.domain.recorder.WAVEFORM_SAMPLE_COUNT
 import net.lgiki.soundmemo.service.audio.AudioRecordingBackend
 import net.lgiki.soundmemo.service.audio.MediaRecorderBackend
 import net.lgiki.soundmemo.service.audio.PcmRecordingBackend
+import net.lgiki.soundmemo.service.audio.RecordingChannels
 import net.lgiki.soundmemo.util.wrapWithLocale
 
 class RecordingService : LifecycleService() {
@@ -99,6 +100,11 @@ class RecordingService : LifecycleService() {
                 val recordingSampleRate = recordingFormat.sampleRateFor(settings.sampleRate)
                 val preferredAudioInput = settings.preferredAudioInput
                 val preferredAudioDevice = container.audioInputDeviceRepository.findPreferredDevice(preferredAudioInput)
+                val recordingChannels = RecordingChannels.resolve(
+                    mode = settings.recordingChannelMode,
+                    format = recordingFormat,
+                    preferredDevice = preferredAudioDevice,
+                )
                 val generatedName = RecordingNameTemplate.generate(
                     template = settings.recordingNameTemplate,
                     extension = recordingFormat.extension,
@@ -110,6 +116,7 @@ class RecordingService : LifecycleService() {
                         format = recordingFormat,
                         bitrate = recordingBitrate,
                         sampleRate = recordingSampleRate,
+                        channels = recordingChannels,
                         preferredDevice = preferredAudioDevice,
                     )
                 } else {
@@ -119,6 +126,7 @@ class RecordingService : LifecycleService() {
                         format = recordingFormat,
                         bitrate = recordingBitrate,
                         sampleRate = recordingSampleRate,
+                        channels = recordingChannels,
                         location = location,
                         writeLocationToMediaFile = settings.writeLocationToMediaFile,
                         preferredDevice = preferredAudioDevice,

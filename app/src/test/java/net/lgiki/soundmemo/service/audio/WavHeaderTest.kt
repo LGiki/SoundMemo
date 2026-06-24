@@ -8,11 +8,32 @@ import org.junit.Test
 
 class WavHeaderTest {
     @Test
-    fun write_writesRiffWaveHeaderWithPatchedSizes() {
+    fun write_writesMonoRiffWaveHeaderWithPatchedSizes() {
+        assertWavHeader(
+            channelCount = 1,
+            expectedByteRate = 88_200,
+            expectedBlockAlign = 2,
+        )
+    }
+
+    @Test
+    fun write_writesStereoRiffWaveHeaderWithPatchedSizes() {
+        assertWavHeader(
+            channelCount = 2,
+            expectedByteRate = 176_400,
+            expectedBlockAlign = 4,
+        )
+    }
+
+    private fun assertWavHeader(
+        channelCount: Int,
+        expectedByteRate: Int,
+        expectedBlockAlign: Int,
+    ) {
         val file = File.createTempFile("soundmemo", ".wav")
         try {
             RandomAccessFile(file, "rw").use { output ->
-                WavHeader.write(output, sampleRate = 44_100, dataBytes = 4)
+                WavHeader.write(output, sampleRate = 44_100, channelCount = channelCount, dataBytes = 4)
             }
 
             val bytes = file.readBytes()
@@ -23,10 +44,10 @@ class WavHeaderTest {
             assertAscii("fmt ", bytes, 12)
             assertEquals(16, bytes.intLeAt(16))
             assertEquals(1, bytes.shortLeAt(20))
-            assertEquals(1, bytes.shortLeAt(22))
+            assertEquals(channelCount, bytes.shortLeAt(22))
             assertEquals(44_100, bytes.intLeAt(24))
-            assertEquals(88_200, bytes.intLeAt(28))
-            assertEquals(2, bytes.shortLeAt(32))
+            assertEquals(expectedByteRate, bytes.intLeAt(28))
+            assertEquals(expectedBlockAlign, bytes.shortLeAt(32))
             assertEquals(16, bytes.shortLeAt(34))
             assertAscii("data", bytes, 36)
             assertEquals(4, bytes.intLeAt(40))

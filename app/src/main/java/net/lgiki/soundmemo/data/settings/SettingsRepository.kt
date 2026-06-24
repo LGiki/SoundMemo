@@ -29,6 +29,9 @@ class SettingsRepository(context: Context) {
                 ?.let { runCatching { VuMeterValueDisplay.valueOf(it) }.getOrNull() }
                 ?: VuMeterValueDisplay.Percent,
             recordingFormat = RecordingFormat.fromStorageValue(prefs[RECORDING_FORMAT]),
+            recordingChannelMode = prefs[RECORDING_CHANNEL_MODE]
+                ?.let { runCatching { RecordingChannelMode.valueOf(it) }.getOrNull() }
+                ?: RecordingChannelMode.Mono,
             bitrate = prefs[BITRATE] ?: 128_000,
             sampleRate = prefs[SAMPLE_RATE] ?: 44_100,
             preferredAudioInput = preferredAudioInput(
@@ -70,6 +73,10 @@ class SettingsRepository(context: Context) {
 
     suspend fun setRecordingFormat(format: RecordingFormat) {
         dataStore.edit { it[RECORDING_FORMAT] = format.storageValue }
+    }
+
+    suspend fun setRecordingChannelMode(mode: RecordingChannelMode) {
+        dataStore.edit { it[RECORDING_CHANNEL_MODE] = mode.name }
     }
 
     suspend fun setPreferredAudioInput(preference: AudioInputPreference?) {
@@ -145,6 +152,7 @@ class SettingsRepository(context: Context) {
         val RECORDER_VISUALIZATION = stringPreferencesKey("recorder_visualization")
         val VU_METER_VALUE_DISPLAY = stringPreferencesKey("vu_meter_value_display")
         val RECORDING_FORMAT = stringPreferencesKey("recording_format")
+        val RECORDING_CHANNEL_MODE = stringPreferencesKey("recording_channel_mode")
         val BITRATE = intPreferencesKey("bitrate")
         val SAMPLE_RATE = intPreferencesKey("sample_rate")
         val PREFERRED_AUDIO_INPUT_ID = intPreferencesKey("preferred_audio_input_id")

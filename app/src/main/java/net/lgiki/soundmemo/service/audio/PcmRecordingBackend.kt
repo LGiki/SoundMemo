@@ -20,18 +20,22 @@ internal class PcmRecordingBackend(
     private val format: RecordingFormat,
     private val bitrate: Int,
     private val sampleRate: Int,
+    private val channels: RecordingChannels,
     private val preferredDevice: AudioDeviceInfo?,
 ) : AudioRecordingBackend {
     private val minBufferSize = AudioRecord.getMinBufferSize(
         sampleRate,
-        AudioFormat.CHANNEL_IN_MONO,
+        channels.inputChannelMask,
         AudioFormat.ENCODING_PCM_16BIT,
     )
-    private val bufferSize = max(minBufferSize.coerceAtLeast(0) / WavHeader.BYTES_PER_SAMPLE, sampleRate / 5)
+    private val bufferSize = max(
+        minBufferSize.coerceAtLeast(0) / WavHeader.BYTES_PER_SAMPLE,
+        sampleRate * channels.channelCount / 5,
+    )
     private val audioRecord = AudioRecord(
         MediaRecorder.AudioSource.MIC,
         sampleRate,
-        AudioFormat.CHANNEL_IN_MONO,
+        channels.inputChannelMask,
         AudioFormat.ENCODING_PCM_16BIT,
         bufferSize * WavHeader.BYTES_PER_SAMPLE,
     )
@@ -59,8 +63,8 @@ internal class PcmRecordingBackend(
             preferredDevice?.let { audioRecord.setPreferredDevice(it) }
         }
         writer = when (format) {
-            RecordingFormat.Wav -> WavAudioWriter(file, sampleRate)
-            RecordingFormat.Mp3 -> Mp3AudioWriter(file, sampleRate, bitrate)
+            RecordingFormat.Wav -> WavAudioWriter(file, sampleRate, channels.channelCount)
+            RecordingFormat.Mp3 -> Mp3AudioWriter(file, sampleRate, bitrate, channels.channelCount)
             else -> error("PCM recorder does not support $format")
         }
         running = true
@@ -136,13 +140,14 @@ internal class PcmRecordingBackend(
     private class WavAudioWriter(
         file: File,
         private val sampleRate: Int,
+        private val channelCount: Int,
     ) : PcmAudioWriter {
         private val output = RandomAccessFile(file, "rw")
         private var dataBytes = 0L
 
         init {
             output.setLength(0)
-            WavHeader.write(output, sampleRate, dataBytes = 0)
+            WavHeader.write(output, sampleRate, channelCount, dataBytes = 0)
         }
 
         override fun write(samples: ShortArray, sampleCount: Int) {
@@ -156,7 +161,7 @@ internal class PcmRecordingBackend(
 
         override fun close() {
             output.seek(0)
-            WavHeader.write(output, sampleRate, dataBytes)
+            WavHeader.write(output, sampleRate, channelCount, dataBytes)
             output.close()
         }
     }
@@ -165,9 +170,10 @@ internal class PcmRecordingBackend(
         file: File,
         sampleRate: Int,
         bitrate: Int,
+        channelCount: Int,
     ) : PcmAudioWriter {
         private val output = FileOutputStream(file)
-        private val encoder = LameMp3Encoder(sampleRate = sampleRate, bitrate = bitrate)
+        private val encoder = LameMp3Encoder(sampleRate = sampleRate, bitrate = bitrate, channelCount = channelCount)
 
         override fun write(samples: ShortArray, sampleCount: Int) {
             val bytes = encoder.encode(samples, sampleCount)

@@ -112,6 +112,9 @@
     <string name="settings_microphone_usb">USB microphone</string>
     <string name="settings_microphone_wired">Headset microphone</string>
     <string name="settings_microphone_external">External microphone</string>
+    <string name="settings_recording_channels">Recording channels</string>
+    <string name="settings_recording_channels_mono">Mono</string>
+    <string name="settings_recording_channels_stereo">Stereo (when supported)</string>
     <string name="settings_bitrate">Bitrate</string>
     <string name="settings_bitrate_fixed_by_format">%1$s uses fixed %2$d kbps / %3$d kHz encoding</string>
     <string name="settings_file_name_template">Default file name</string>

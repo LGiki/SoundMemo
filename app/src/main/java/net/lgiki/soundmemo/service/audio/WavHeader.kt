@@ -3,21 +3,20 @@ package net.lgiki.soundmemo.service.audio
 import java.io.RandomAccessFile
 
 internal object WavHeader {
-    const val CHANNELS = 1
     const val BITS_PER_SAMPLE = 16
     const val BYTES_PER_SAMPLE = BITS_PER_SAMPLE / 8
 
-    fun write(output: RandomAccessFile, sampleRate: Int, dataBytes: Long) {
+    fun write(output: RandomAccessFile, sampleRate: Int, channelCount: Int, dataBytes: Long) {
         output.writeBytes("RIFF")
         output.writeIntLe((36L + dataBytes).coerceAtMost(MAX_UNSIGNED_INT).toInt())
         output.writeBytes("WAVE")
         output.writeBytes("fmt ")
         output.writeIntLe(16)
         output.writeShortLe(1)
-        output.writeShortLe(CHANNELS)
+        output.writeShortLe(channelCount)
         output.writeIntLe(sampleRate)
-        output.writeIntLe(sampleRate * CHANNELS * BYTES_PER_SAMPLE)
-        output.writeShortLe(CHANNELS * BYTES_PER_SAMPLE)
+        output.writeIntLe(sampleRate * channelCount * BYTES_PER_SAMPLE)
+        output.writeShortLe(channelCount * BYTES_PER_SAMPLE)
         output.writeShortLe(BITS_PER_SAMPLE)
         output.writeBytes("data")
         output.writeIntLe(dataBytes.coerceAtMost(MAX_UNSIGNED_INT).toInt())

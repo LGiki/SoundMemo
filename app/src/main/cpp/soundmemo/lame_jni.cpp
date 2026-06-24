@@ -34,16 +34,20 @@ Java_net_lgiki_soundmemo_service_audio_LameMp3Encoder_nativeInit(
     JNIEnv*,
     jobject,
     jint sampleRate,
-    jint bitrateKbps
+    jint bitrateKbps,
+    jint channelCount
 ) {
+    if (channelCount != 1 && channelCount != 2) {
+        return 0;
+    }
     lame_global_flags* gfp = lame_init();
     if (gfp == nullptr) {
         return 0;
     }
     lame_set_in_samplerate(gfp, sampleRate);
     lame_set_out_samplerate(gfp, sampleRate);
-    lame_set_num_channels(gfp, 1);
-    lame_set_mode(gfp, MONO);
+    lame_set_num_channels(gfp, channelCount);
+    lame_set_mode(gfp, channelCount == 1 ? MONO : JOINT_STEREO);
     lame_set_brate(gfp, bitrateKbps);
     lame_set_quality(gfp, 2);
     lame_set_write_id3tag_automatic(gfp, 0);
@@ -73,16 +77,37 @@ Java_net_lgiki_soundmemo_service_audio_LameMp3Encoder_nativeEncode(
         return nullptr;
     }
 
-    const int mp3BufferSize = static_cast<int>(1.25 * sampleCount) + 7200;
+    const int channelCount = lame_get_num_channels(gfp);
+    if (channelCount == 2 && sampleCount % 2 != 0) {
+        __android_log_print(ANDROID_LOG_WARN, kTag, "Dropping odd trailing stereo sample: %d", sampleCount);
+    }
+    const int frameCount = channelCount == 2 ? sampleCount / 2 : sampleCount;
+    if (frameCount <= 0) {
+        env->ReleaseShortArrayElements(pcm, pcmData, JNI_ABORT);
+        return env->NewByteArray(0);
+    }
+
+    const int mp3BufferSize = static_cast<int>(1.25 * frameCount * channelCount) + 7200;
     std::vector<unsigned char> mp3Buffer(mp3BufferSize);
-    int encoded = lame_encode_buffer(
-        gfp,
-        pcmData,
-        pcmData,
-        sampleCount,
-        mp3Buffer.data(),
-        mp3BufferSize
-    );
+    int encoded = 0;
+    if (channelCount == 2) {
+        encoded = lame_encode_buffer_interleaved(
+            gfp,
+            pcmData,
+            frameCount,
+            mp3Buffer.data(),
+            mp3BufferSize
+        );
+    } else {
+        encoded = lame_encode_buffer(
+            gfp,
+            pcmData,
+            pcmData,
+            frameCount,
+            mp3Buffer.data(),
+            mp3BufferSize
+        );
+    }
     env->ReleaseShortArrayElements(pcm, pcmData, JNI_ABORT);
 
     if (encoded < 0) {

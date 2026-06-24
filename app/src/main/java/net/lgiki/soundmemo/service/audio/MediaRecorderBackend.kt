@@ -15,6 +15,7 @@ internal class MediaRecorderBackend(
     private val format: RecordingFormat,
     private val bitrate: Int,
     private val sampleRate: Int,
+    private val channels: RecordingChannels,
     private val location: RecordingLocation?,
     private val writeLocationToMediaFile: Boolean,
     private val preferredDevice: AudioDeviceInfo?,
@@ -47,6 +48,7 @@ internal class MediaRecorderBackend(
         recorder.setRecordingFormat(format)
         recorder.setAudioEncodingBitRate(bitrate)
         recorder.setAudioSamplingRate(sampleRate)
+        recorder.setAudioChannels(channels.channelCount)
         recorder.setOutputFile(file.absolutePath)
         location
             ?.takeIf { writeLocationToMediaFile && format.supportsLocationMetadata }

@@ -83,6 +83,7 @@ import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.roundToInt
 import net.lgiki.soundmemo.R
+import net.lgiki.soundmemo.data.settings.RecordingChannelMode
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
 import net.lgiki.soundmemo.domain.recorder.AacBitrateOptions
@@ -206,6 +207,13 @@ fun SettingsScreen(
                             recordingFormat = settings.recordingFormat,
                         ),
                         onClick = { openDialog = SettingsDialog.Microphone },
+                    )
+                    PreferenceDivider()
+                    PreferenceRow(
+                        leadingIcon = Icons.Default.GraphicEq,
+                        headline = stringResource(R.string.settings_recording_channels),
+                        supporting = recordingChannelModeLabel(settings.recordingChannelMode),
+                        onClick = { openDialog = SettingsDialog.RecordingChannels },
                     )
                     PreferenceDivider()
                     PreferenceRow(
@@ -378,6 +386,18 @@ fun SettingsScreen(
             },
             onSelect = {
                 viewModel.setPreferredAudioInput(it)
+                openDialog = null
+            },
+            onDismiss = { openDialog = null },
+        )
+        SettingsDialog.RecordingChannels -> SingleChoiceSettingsDialog(
+            title = stringResource(R.string.settings_recording_channels),
+            options = RecordingChannelMode.entries.map { mode ->
+                SettingsOption(mode, recordingChannelModeLabel(mode))
+            },
+            selected = settings.recordingChannelMode,
+            onSelect = {
+                viewModel.setRecordingChannelMode(it)
                 openDialog = null
             },
             onDismiss = { openDialog = null },
@@ -851,6 +871,12 @@ private fun recordingFormatLabel(format: RecordingFormat): String = when (format
     RecordingFormat.Mp3 -> stringResource(R.string.settings_file_format_mp3)
 }
 
+@Composable
+private fun recordingChannelModeLabel(mode: RecordingChannelMode): String = when (mode) {
+    RecordingChannelMode.Mono -> stringResource(R.string.settings_recording_channels_mono)
+    RecordingChannelMode.Stereo -> stringResource(R.string.settings_recording_channels_stereo)
+}
+
 private fun bitrateValuesFor(recordingFormat: RecordingFormat, deviceAacValues: List<Int>): List<Int> =
     if (recordingFormat.usesAacBitrateRange) {
         deviceAacValues
@@ -1000,6 +1026,7 @@ private enum class SettingsDialog {
     Language,
     RecordingFormat,
     Microphone,
+    RecordingChannels,
     Bitrate,
     FileNameTemplate,
     RewindSeconds,
