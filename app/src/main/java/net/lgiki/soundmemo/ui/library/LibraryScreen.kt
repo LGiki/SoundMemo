@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -558,6 +559,8 @@ private fun SpeedMenu(currentSpeed: Float, onSpeed: (Float) -> Unit) {
     ) {
         Box {
             TextButton(onClick = { menuOpen = true }) {
+                Icon(Icons.Default.Speed, contentDescription = null)
+                Spacer(Modifier.size(6.dp))
                 Text(speedLabel)
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
