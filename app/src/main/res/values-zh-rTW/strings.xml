@@ -48,6 +48,7 @@
     <string name="library_search">搜尋錄音</string>
     <string name="library_empty">尚無錄音。</string>
     <string name="library_empty_action">開始錄音</string>
+    <string name="library_no_search_results">沒有相符的錄音</string>
     <string name="library_recycle_bin">回收桶</string>
     <string name="library_miniplayer_playing">播放中</string>
     <string name="library_miniplayer_paused">已暫停</string>

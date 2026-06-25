@@ -48,6 +48,7 @@
     <string name="library_search">Search recordings</string>
     <string name="library_empty">No recordings yet.</string>
     <string name="library_empty_action">Start recording</string>
+    <string name="library_no_search_results">No matching recordings</string>
     <string name="library_recycle_bin">Recycle Bin</string>
     <string name="library_miniplayer_playing">Playing</string>
     <string name="library_miniplayer_paused">Paused</string>

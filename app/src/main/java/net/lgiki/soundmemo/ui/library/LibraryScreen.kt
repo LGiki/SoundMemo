@@ -107,13 +107,18 @@ fun LibraryScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             SortRow(state.sort, viewModel::setSort)
-            if (state.recordings.isEmpty()) {
+            if (shouldShowEmptyLibrary(state.activeCount, state.deleted.size)) {
                 EmptyLibrary(onStartRecording = onStartRecording, modifier = Modifier.weight(1f))
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    if (shouldShowNoSearchResults(state.query, state.recordings.size, state.activeCount)) {
+                        item {
+                            NoSearchResults()
+                        }
+                    }
                     items(state.recordings, key = { it.id }) { recording ->
                         val isSelected = playerState.recording?.id == recording.id
                         RecordingItem(
@@ -165,6 +170,12 @@ fun LibraryScreen(
     }
 }
 
+internal fun shouldShowEmptyLibrary(activeCount: Int, deletedCount: Int): Boolean =
+    activeCount == 0 && deletedCount == 0
+
+internal fun shouldShowNoSearchResults(query: String, filteredCount: Int, activeCount: Int): Boolean =
+    query.isNotBlank() && filteredCount == 0 && activeCount > 0
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SortRow(sort: RecordingSort, onSort: (RecordingSort) -> Unit) {
@@ -202,6 +213,22 @@ private fun EmptyLibrary(onStartRecording: () -> Unit, modifier: Modifier = Modi
                 Text(stringResource(R.string.library_empty_action))
             }
         }
+    }
+}
+
+@Composable
+private fun NoSearchResults() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Text(
+            text = stringResource(R.string.library_no_search_results),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(16.dp),
+        )
     }
 }
 

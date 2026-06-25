@@ -20,6 +20,7 @@ import net.lgiki.soundmemo.domain.player.PlaybackController
 
 data class LibraryUiState(
     val recordings: List<Recording> = emptyList(),
+    val activeCount: Int = 0,
     val deleted: List<Recording> = emptyList(),
     val query: String = "",
     val sort: RecordingSort = RecordingSort.Newest,
@@ -53,6 +54,7 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
         val filtered = active.filter { it.name.contains(queryValue, ignoreCase = true) }
         LibraryUiState(
             recordings = filtered.sortedWith(sortValue.comparator()),
+            activeCount = active.size,
             deleted = deleted,
             query = queryValue,
             sort = sortValue,
