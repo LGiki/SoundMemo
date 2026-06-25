@@ -40,6 +40,7 @@ import net.lgiki.soundmemo.service.audio.AudioRecordingBackend
 import net.lgiki.soundmemo.service.audio.MediaRecorderBackend
 import net.lgiki.soundmemo.service.audio.PcmRecordingBackend
 import net.lgiki.soundmemo.service.audio.RecordingChannels
+import net.lgiki.soundmemo.util.formatDuration
 import net.lgiki.soundmemo.util.wrapWithLocale
 
 class RecordingService : LifecycleService() {
@@ -67,6 +68,7 @@ class RecordingService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         ensureChannel()
+        ensureSavedChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -75,7 +77,10 @@ class RecordingService : LifecycleService() {
             ACTION_START -> startRecording(intent.recordingLocationExtra())
             ACTION_PAUSE -> pauseRecording()
             ACTION_RESUME -> resumeRecording()
-            ACTION_STOP -> stopRecording(save = true)
+            ACTION_STOP -> stopRecording(
+                save = true,
+                fromNotification = intent.getBooleanExtra(EXTRA_FROM_NOTIFICATION, false),
+            )
             ACTION_CANCEL -> stopRecording(save = false)
         }
         return Service.START_NOT_STICKY
@@ -156,7 +161,7 @@ class RecordingService : LifecycleService() {
                 ServiceCompat.startForeground(
                     this@RecordingService,
                     NOTIFICATION_ID,
-                    buildNotification(RecorderStatus.Recording),
+                    buildNotification(RecorderStatus.Recording, 0L),
                     foregroundServiceType(),
                 )
                 startTicker()
@@ -205,7 +210,7 @@ class RecordingService : LifecycleService() {
         }
     }
 
-    private fun stopRecording(save: Boolean) {
+    private fun stopRecording(save: Boolean, fromNotification: Boolean = false) {
         if (isStopping) return
         if (isStarting) return
         val activeRecorder = recorder ?: return stopSelf()
@@ -220,6 +225,7 @@ class RecordingService : LifecycleService() {
             val activeSampleRate = outputSampleRate
             val elapsed = currentElapsed()
             val location = recordingLocation
+            var savedConfirmationMessage: String? = null
             try {
                 activeRecorder.stop()
                 cleanupRecorder()
@@ -235,13 +241,17 @@ class RecordingService : LifecycleService() {
                         format = recordingFormat.storageValue,
                         location = location,
                     )
+                    val savedMessage = getString(R.string.recorder_saved_message)
                     RecordingStateHolder.update(
                         RecorderUiState(
                             status = RecorderStatus.Saved,
                             lastSavedId = id,
-                            message = getString(R.string.recorder_saved_message),
+                            message = if (fromNotification) null else savedMessage,
                         ),
                     )
+                    if (fromNotification) {
+                        savedConfirmationMessage = savedMessage
+                    }
                 } else {
                     file?.delete()
                     RecordingStateHolder.update(RecorderUiState(status = RecorderStatus.Idle))
@@ -258,6 +268,7 @@ class RecordingService : LifecycleService() {
                 )
             } finally {
                 stopForeground(STOP_FOREGROUND_REMOVE)
+                savedConfirmationMessage?.let(::showSavedConfirmationNotification)
                 isStopping = false
                 stopSelf()
             }
@@ -268,9 +279,11 @@ class RecordingService : LifecycleService() {
         ticker?.cancel()
         ticker = lifecycleScope.launch {
             var routeRefreshTick = 0
+            var lastNotifiedSecond = -1L
             while (true) {
                 val current = RecordingStateHolder.state.value
                 val status = current.status
+                val elapsedMs = currentElapsed()
                 val amplitude = if (status == RecorderStatus.Recording) runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0) else 0
                 val refreshRoute = current.actualAudioInput == null || routeRefreshTick++ % ROUTE_REFRESH_TICKS == 0
                 val routedDevice = if (refreshRoute) {
@@ -285,12 +298,20 @@ class RecordingService : LifecycleService() {
                 }
                 RecordingStateHolder.update(
                     current.copy(
-                        elapsedMs = currentElapsed(),
+                        elapsedMs = elapsedMs,
                         amplitude = amplitude,
                         waveform = waveform,
                         actualAudioInput = routedDevice,
                     ),
                 )
+                val elapsedSecond = elapsedMs / 1000
+                if (
+                    (status == RecorderStatus.Recording || status == RecorderStatus.Paused) &&
+                    elapsedSecond != lastNotifiedSecond
+                ) {
+                    lastNotifiedSecond = elapsedSecond
+                    updateNotification(status, elapsedMs)
+                }
                 delay(250)
             }
         }
@@ -336,17 +357,60 @@ class RecordingService : LifecycleService() {
     }
 
     private fun notifyStatus(status: RecorderStatus) {
+        updateNotification(status, currentElapsed())
+    }
+
+    private fun updateNotification(status: RecorderStatus, elapsedMs: Long) {
         if (
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         ) {
             runCatching {
-                NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, buildNotification(status))
+                NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, buildNotification(status, elapsedMs))
             }
         }
     }
 
-    private fun buildNotification(status: RecorderStatus): Notification {
+    private fun ensureSavedChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val channel = NotificationChannel(
+            SAVED_CHANNEL_ID,
+            getString(R.string.notification_saved_channel_name),
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = getString(R.string.notification_saved_channel_desc)
+            setShowBadge(false)
+        }
+        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+    }
+
+    private fun showSavedConfirmationNotification(message: String) {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        runCatching {
+            val openIntent = PendingIntent.getActivity(
+                this,
+                0,
+                Intent(this, MainActivity::class.java),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            val notification = NotificationCompat.Builder(this, SAVED_CHANNEL_ID)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(message)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .setTimeoutAfter(SAVED_CONFIRMATION_TIMEOUT_MS)
+                .setContentIntent(openIntent)
+                .build()
+            NotificationManagerCompat.from(this).notify(SAVED_NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun buildNotification(status: RecorderStatus, elapsedMs: Long): Notification {
         val openIntent = PendingIntent.getActivity(
             this,
             0,
@@ -358,14 +422,20 @@ class RecordingService : LifecycleService() {
         } else {
             NotificationCompat.Action(0, getString(R.string.notification_action_pause), commandIntent(ACTION_PAUSE, 1))
         }
+        val durationText = formatDuration(elapsedMs)
+        val contentText = if (status == RecorderStatus.Paused) {
+            getString(R.string.notification_text_paused, durationText)
+        } else {
+            getString(R.string.notification_text_recording, durationText)
+        }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(getString(R.string.notification_title))
-            .setContentText(if (status == RecorderStatus.Paused) getString(R.string.notification_text_paused) else getString(R.string.notification_text_recording))
+            .setContentText(contentText)
             .setOngoing(true)
             .setContentIntent(openIntent)
             .addAction(pauseResumeAction)
-            .addAction(NotificationCompat.Action(0, getString(R.string.notification_action_stop), commandIntent(ACTION_STOP, 3)))
+            .addAction(NotificationCompat.Action(0, getString(R.string.notification_action_stop), commandIntent(ACTION_STOP, 3, fromNotification = true)))
             .build()
     }
 
@@ -376,17 +446,22 @@ class RecordingService : LifecycleService() {
             0
         }
 
-    private fun commandIntent(action: String, requestCode: Int): PendingIntent =
+    private fun commandIntent(action: String, requestCode: Int, fromNotification: Boolean = false): PendingIntent =
         PendingIntent.getService(
             this,
             requestCode,
-            Intent(this, RecordingService::class.java).setAction(action),
+            Intent(this, RecordingService::class.java).setAction(action).apply {
+                if (fromNotification) putExtra(EXTRA_FROM_NOTIFICATION, true)
+            },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
     companion object {
         private const val CHANNEL_ID = "recording"
+        private const val SAVED_CHANNEL_ID = "recording_saved"
         private const val NOTIFICATION_ID = 1001
+        private const val SAVED_NOTIFICATION_ID = 1002
+        private const val SAVED_CONFIRMATION_TIMEOUT_MS = 4_000L
         private const val MAX_PCM_AMPLITUDE = 32767f
         private const val ROUTE_REFRESH_TICKS = 4
         const val ACTION_START = "net.lgiki.soundmemo.START_RECORDING"
@@ -394,6 +469,7 @@ class RecordingService : LifecycleService() {
         const val ACTION_RESUME = "net.lgiki.soundmemo.RESUME_RECORDING"
         const val ACTION_STOP = "net.lgiki.soundmemo.STOP_RECORDING"
         const val ACTION_CANCEL = "net.lgiki.soundmemo.CANCEL_RECORDING"
+        private const val EXTRA_FROM_NOTIFICATION = "net.lgiki.soundmemo.extra.FROM_NOTIFICATION"
         private const val EXTRA_LOCATION_LATITUDE = "net.lgiki.soundmemo.extra.LOCATION_LATITUDE"
         private const val EXTRA_LOCATION_LONGITUDE = "net.lgiki.soundmemo.extra.LOCATION_LONGITUDE"
         private const val EXTRA_LOCATION_ACCURACY = "net.lgiki.soundmemo.extra.LOCATION_ACCURACY"

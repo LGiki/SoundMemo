@@ -158,11 +158,13 @@
     <string name="notification_channel_name">錄音</string>
     <string name="notification_channel_desc">SoundMemo 錄音控制</string>
     <string name="notification_title">SoundMemo 正在錄音</string>
-    <string name="notification_text_paused">錄音已暫停</string>
-    <string name="notification_text_recording">錄音進行中</string>
+    <string name="notification_text_paused">%1$s · 已暫停</string>
+    <string name="notification_text_recording">%1$s</string>
     <string name="notification_action_resume">繼續</string>
     <string name="notification_action_pause">暫停</string>
     <string name="notification_action_stop">停止</string>
+    <string name="notification_saved_channel_name">錄音狀態</string>
+    <string name="notification_saved_channel_desc">錄音儲存後的確認通知</string>
 
     <!-- Playback Errors -->
     <string name="playback_failed">播放失敗。</string>

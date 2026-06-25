@@ -158,11 +158,13 @@
     <string name="notification_channel_name">Recording</string>
     <string name="notification_channel_desc">Active SoundMemo recording controls</string>
     <string name="notification_title">SoundMemo is recording</string>
-    <string name="notification_text_paused">Recording paused</string>
-    <string name="notification_text_recording">Recording in progress</string>
+    <string name="notification_text_paused">%1$s · Paused</string>
+    <string name="notification_text_recording">%1$s</string>
     <string name="notification_action_resume">Resume</string>
     <string name="notification_action_pause">Pause</string>
     <string name="notification_action_stop">Stop</string>
+    <string name="notification_saved_channel_name">Recording status</string>
+    <string name="notification_saved_channel_desc">Confirmations when a recording is saved</string>
 
     <!-- Playback Errors -->
     <string name="playback_failed">Playback failed.</string>
