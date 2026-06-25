@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -85,6 +86,7 @@ fun LibraryScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val playerState by viewModel.playback.state.collectAsStateWithLifecycle()
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = { TopAppBar(title = { Text(stringResource(R.string.library_title)) }) },
     ) { padding ->
         Column(

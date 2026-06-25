@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -148,6 +149,7 @@ fun SettingsScreen(
     }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = { TopAppBar(title = { Text(stringResource(R.string.settings_title)) }) },
     ) { padding ->
         LazyColumn(
