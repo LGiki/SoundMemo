@@ -78,6 +78,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -278,7 +279,7 @@ fun SettingsScreen(
                     )
                     PreferenceDivider()
                     PreferenceRow(
-                        leadingIcon = Icons.Default.GraphicEq,
+                        leadingIcon = Icons.Default.Speed,
                         headline = stringResource(R.string.settings_bitrate),
                         supporting = bitrateSupportingText(
                             recordingFormat = settings.recordingFormat,
