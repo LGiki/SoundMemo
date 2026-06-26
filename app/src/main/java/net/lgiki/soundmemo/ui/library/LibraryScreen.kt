@@ -1,7 +1,13 @@
 package net.lgiki.soundmemo.ui.library
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.widget.Toast
+import androidx.annotation.StringRes
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,12 +21,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -42,6 +51,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -73,10 +83,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.model.Recording
 import net.lgiki.soundmemo.data.model.RecordingSort
+import net.lgiki.soundmemo.data.storage.deviceMusicPath
+import net.lgiki.soundmemo.data.storage.documentUriPath
 import net.lgiki.soundmemo.domain.player.PlayerUiState
 import net.lgiki.soundmemo.util.formatDateTime
 import net.lgiki.soundmemo.util.formatDuration
 import net.lgiki.soundmemo.util.formatFileSize
+import net.lgiki.soundmemo.util.formatPreciseDuration
 import net.lgiki.soundmemo.util.formatRecordingLocation
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,6 +100,7 @@ fun LibraryScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val playerState by viewModel.playback.state.collectAsStateWithLifecycle()
+    var propertiesRecording by remember { mutableStateOf<Recording?>(null) }
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp),
         topBar = { TopAppBar(title = { Text(stringResource(R.string.library_title)) }) },
@@ -133,6 +147,7 @@ fun LibraryScreen(
                                 }
                             },
                             onRename = { viewModel.rename(recording.id, it) },
+                            onProperties = { propertiesRecording = recording },
                             onShare = { viewModel.share(it, recording) },
                             onDelete = {
                                 if (isSelected) {
@@ -168,6 +183,12 @@ fun LibraryScreen(
                 }
             }
         }
+    }
+    propertiesRecording?.let { recording ->
+        RecordingPropertiesSheet(
+            recording = recording,
+            onDismiss = { propertiesRecording = null },
+        )
     }
 }
 
@@ -248,6 +269,7 @@ private fun RecordingItem(
     playerState: PlayerUiState?,
     onPlay: () -> Unit,
     onRename: (String) -> Unit,
+    onProperties: () -> Unit,
     onShare: (android.content.Context) -> Unit,
     onDelete: () -> Unit,
     onSeek: (Long) -> Unit,
@@ -295,6 +317,14 @@ private fun RecordingItem(
                     onClick = {
                         menuOpen = false
                         renameOpen = true
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.library_properties)) },
+                    leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
+                    onClick = {
+                        menuOpen = false
+                        onProperties()
                     },
                 )
                 DropdownMenuItem(
@@ -356,6 +386,167 @@ private fun RecordingItem(
         )
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RecordingPropertiesSheet(recording: Recording, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val clipboardManager = context.getSystemService(ClipboardManager::class.java)
+    val storagePath = storageDisplayValue(recording)
+    val storageValue = storagePath ?: stringResource(storageLabelRes(recording.storageType))
+    val copyStorageLabel = stringResource(R.string.library_property_storage_copy)
+    val copiedMessage = stringResource(R.string.library_property_storage_copied)
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.library_properties_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            PropertyRow(
+                label = stringResource(R.string.library_property_name),
+                value = recording.name,
+            )
+            PropertyRow(
+                label = stringResource(R.string.library_property_duration),
+                value = formatPreciseDuration(recording.durationMs),
+            )
+            PropertyRow(
+                label = stringResource(R.string.library_property_file_size),
+                value = formatFileSize(recording.fileSizeBytes),
+            )
+            PropertyRow(
+                label = stringResource(R.string.library_property_format),
+                value = recording.format.uppercase(),
+            )
+            PropertyRow(
+                label = stringResource(R.string.library_property_bitrate),
+                value = formatBitrate(recording.bitrate),
+            )
+            PropertyRow(
+                label = stringResource(R.string.library_property_sample_rate),
+                value = formatSampleRate(recording.sampleRate),
+            )
+            PropertyRow(
+                label = stringResource(R.string.library_property_created),
+                value = formatDateTime(recording.createdAt),
+            )
+            PropertyRow(
+                label = stringResource(R.string.library_property_modified),
+                value = formatDateTime(recording.updatedAt),
+            )
+            PropertyRow(
+                label = stringResource(R.string.library_property_storage),
+                value = storageValue,
+                onCopy = storagePath?.let {
+                    {
+                        clipboardManager.setPrimaryClip(ClipData.newPlainText(copyStorageLabel, it))
+                        Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                    }
+                },
+                copyLabel = copyStorageLabel,
+            )
+            formatRecordingLocation(recording)?.let { location ->
+                PropertyRow(
+                    label = stringResource(R.string.library_property_location),
+                    value = location,
+                )
+            }
+            recording.locationAccuracyMeters?.let { accuracy ->
+                PropertyRow(
+                    label = stringResource(R.string.library_property_location_accuracy),
+                    value = stringResource(R.string.library_property_location_accuracy_value, accuracy),
+                )
+            }
+            recording.locationCapturedAt?.let { capturedAt ->
+                PropertyRow(
+                    label = stringResource(R.string.library_property_location_captured),
+                    value = formatDateTime(capturedAt),
+                )
+            }
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.align(Alignment.End),
+            ) {
+                Text(stringResource(R.string.library_properties_close))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PropertyRow(
+    label: String,
+    value: String,
+    onCopy: (() -> Unit)? = null,
+    copyLabel: String? = null,
+) {
+    val rowModifier = if (onCopy == null) {
+        Modifier
+    } else {
+        Modifier.combinedClickable(
+            onClick = {},
+            onLongClick = onCopy,
+            onLongClickLabel = copyLabel,
+        )
+    }
+    Column(
+        modifier = rowModifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+internal fun formatBitrate(bitrate: Int): String =
+    "${(bitrate / 1_000).coerceAtLeast(0)} kbps"
+
+internal fun formatSampleRate(sampleRate: Int): String =
+    if (sampleRate % 1_000 == 0) {
+        "${sampleRate / 1_000} kHz"
+    } else {
+        String.format(java.util.Locale.getDefault(), "%.1f kHz", sampleRate / 1_000.0)
+    }
+
+@StringRes
+internal fun storageLabelRes(storageType: String): Int =
+    when (storageType) {
+        "file" -> R.string.library_property_storage_app_files
+        "media_store" -> R.string.library_property_storage_device_music
+        "content_uri" -> R.string.library_property_storage_custom_folder
+        else -> R.string.library_property_storage_unknown
+    }
+
+internal fun storageDisplayValue(recording: Recording): String? =
+    when (recording.storageType) {
+        "media_store" -> recording.filePath.ifBlank {
+            deviceMusicPath("${recording.name}.${recording.format.lowercase()}")
+        }
+        "content_uri" -> recording.filePath.ifBlank {
+            documentUriPath(recording.storageUri)
+        }
+        "file" -> recording.filePath.takeIf { it.isNotBlank() && it.contains("/Music/SoundMemo/") }
+        else -> null
+    }
 
 @Composable
 private fun DeletedRecordingItem(

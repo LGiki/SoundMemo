@@ -17,6 +17,20 @@ fun formatDuration(ms: Long): String {
     }
 }
 
+fun formatPreciseDuration(ms: Long): String {
+    val positiveMs = ms.coerceAtLeast(0)
+    val totalSeconds = positiveMs / 1000
+    val milliseconds = positiveMs % 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        String.format(Locale.getDefault(), "%d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds)
+    } else {
+        String.format(Locale.getDefault(), "%02d:%02d.%03d", minutes, seconds, milliseconds)
+    }
+}
+
 fun formatFileSize(bytes: Long): String {
     if (bytes < 1024) return "$bytes B"
     val kb = bytes / 1024.0

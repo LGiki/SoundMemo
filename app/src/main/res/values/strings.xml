@@ -57,6 +57,7 @@
     <string name="library_play_desc">Play %s</string>
     <string name="library_more_actions">More actions</string>
     <string name="library_rename">Rename</string>
+    <string name="library_properties">Properties</string>
     <string name="library_share">Share</string>
     <string name="library_delete">Delete</string>
     <string name="library_rename_dialog_title">Rename recording</string>
@@ -67,6 +68,27 @@
     <string name="library_delete_perm_desc">Delete %s permanently</string>
     <string name="library_deleted_prefix">Deleted %s</string>
     <string name="recording_location_coordinates">Location: %1$s</string>
+    <string name="library_properties_title">Recording properties</string>
+    <string name="library_properties_close">Close</string>
+    <string name="library_property_name">Name</string>
+    <string name="library_property_duration">Duration</string>
+    <string name="library_property_file_size">File size</string>
+    <string name="library_property_format">Format</string>
+    <string name="library_property_bitrate">Bitrate</string>
+    <string name="library_property_sample_rate">Sample rate</string>
+    <string name="library_property_created">Created</string>
+    <string name="library_property_modified">Last modified</string>
+    <string name="library_property_storage">Storage</string>
+    <string name="library_property_storage_app_files">App files</string>
+    <string name="library_property_storage_device_music">Device Music</string>
+    <string name="library_property_storage_custom_folder">Custom folder</string>
+    <string name="library_property_storage_unknown">Unknown</string>
+    <string name="library_property_storage_copy">Copy storage path</string>
+    <string name="library_property_storage_copied">Storage path copied</string>
+    <string name="library_property_location">Location</string>
+    <string name="library_property_location_accuracy">Location accuracy</string>
+    <string name="library_property_location_accuracy_value">%1$.0f m</string>
+    <string name="library_property_location_captured">Location captured</string>
 
     <!-- Sort Labels -->
     <string name="sort_newest">Newest</string>

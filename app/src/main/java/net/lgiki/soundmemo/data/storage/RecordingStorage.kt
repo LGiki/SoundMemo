@@ -12,6 +12,8 @@ import android.provider.MediaStore
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import java.io.File
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 import net.lgiki.soundmemo.data.model.Recording
 import net.lgiki.soundmemo.data.model.RecordingStorageType
@@ -184,7 +186,7 @@ class RecordingStorage(private val context: Context) {
             tempFile.delete()
             return RecordingSaveResult(
                 storageType = RecordingStorageType.MediaStore.storageValue,
-                filePath = "",
+                filePath = deviceMusicPath(generatedName.fileName),
                 storageUri = uri.toString(),
                 fileSizeBytes = fileSizeBytes,
                 fellBackToAppFiles = false,
@@ -220,7 +222,7 @@ class RecordingStorage(private val context: Context) {
             tempFile.delete()
             return RecordingSaveResult(
                 storageType = RecordingStorageType.ContentUri.storageValue,
-                filePath = "",
+                filePath = documentUriPath(uri.toString()).orEmpty(),
                 storageUri = uri.toString(),
                 fileSizeBytes = fileSizeBytes,
                 fellBackToAppFiles = false,
@@ -280,5 +282,23 @@ internal fun mimeTypeForFormat(format: String): String = when (format.lowercase(
 }
 
 private const val APP_RECORDINGS_DIR = "recordings"
+private const val PUBLIC_MUSIC_DIR = "Music"
 private const val PUBLIC_RECORDINGS_DIR = "SoundMemo"
+
+fun deviceMusicPath(fileName: String): String =
+    "/storage/emulated/0/$PUBLIC_MUSIC_DIR/$PUBLIC_RECORDINGS_DIR/$fileName"
+
+fun documentUriPath(uriString: String?): String? {
+    if (uriString.isNullOrBlank()) return null
+    val encodedDocumentId = uriString.substringAfter("/document/", missingDelimiterValue = "")
+    if (encodedDocumentId.isBlank()) return null
+    val documentId = URLDecoder.decode(encodedDocumentId, StandardCharsets.UTF_8.name())
+    val volume = documentId.substringBefore(':', missingDelimiterValue = "")
+    val path = documentId.substringAfter(':', missingDelimiterValue = "").trim('/')
+    if (volume.isBlank() || path.isBlank()) return null
+    return when (volume) {
+        "primary" -> "/storage/emulated/0/$path"
+        else -> "/storage/$volume/$path"
+    }
+}
 private val GENERATED_RECORDING_NAME = Regex("""SoundMemo_\d{8}_\d{6}_\d{3}_[A-Za-z0-9-]+""")

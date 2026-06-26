@@ -57,6 +57,7 @@
     <string name="library_play_desc">播放 %s</string>
     <string name="library_more_actions">更多操作</string>
     <string name="library_rename">重新命名</string>
+    <string name="library_properties">屬性</string>
     <string name="library_share">分享</string>
     <string name="library_delete">刪除</string>
     <string name="library_rename_dialog_title">重新命名錄音</string>
@@ -67,6 +68,27 @@
     <string name="library_delete_perm_desc">永久刪除 %s</string>
     <string name="library_deleted_prefix">已刪除 %s</string>
     <string name="recording_location_coordinates">位置：%1$s</string>
+    <string name="library_properties_title">錄音屬性</string>
+    <string name="library_properties_close">關閉</string>
+    <string name="library_property_name">名稱</string>
+    <string name="library_property_duration">時長</string>
+    <string name="library_property_file_size">檔案大小</string>
+    <string name="library_property_format">格式</string>
+    <string name="library_property_bitrate">位元率</string>
+    <string name="library_property_sample_rate">取樣率</string>
+    <string name="library_property_created">建立時間</string>
+    <string name="library_property_modified">最後修改</string>
+    <string name="library_property_storage">儲存位置</string>
+    <string name="library_property_storage_app_files">應用程式檔案</string>
+    <string name="library_property_storage_device_music">裝置音樂目錄</string>
+    <string name="library_property_storage_custom_folder">自訂資料夾</string>
+    <string name="library_property_storage_unknown">未知</string>
+    <string name="library_property_storage_copy">複製儲存路徑</string>
+    <string name="library_property_storage_copied">儲存路徑已複製</string>
+    <string name="library_property_location">位置</string>
+    <string name="library_property_location_accuracy">位置精確度</string>
+    <string name="library_property_location_accuracy_value">%1$.0f 公尺</string>
+    <string name="library_property_location_captured">位置記錄時間</string>
 
     <!-- Sort Labels -->
     <string name="sort_newest">最新</string>
