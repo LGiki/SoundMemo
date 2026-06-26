@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import net.lgiki.soundmemo.MainActivity
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.SoundMemoApplication
+import net.lgiki.soundmemo.data.storage.GeneratedRecordingName
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 import net.lgiki.soundmemo.domain.recorder.RecordingLocation
@@ -46,6 +47,7 @@ import net.lgiki.soundmemo.util.wrapWithLocale
 class RecordingService : LifecycleService() {
     private var recorder: AudioRecordingBackend? = null
     private var outputFile: File? = null
+    private var outputGeneratedName: GeneratedRecordingName? = null
     private var outputDisplayName: String? = null
     private var outputFormat: RecordingFormat? = null
     private var outputBitrate: Int = 0
@@ -114,9 +116,10 @@ class RecordingService : LifecycleService() {
                     template = settings.recordingNameTemplate,
                     extension = recordingFormat.extension,
                 )
-                val createdFile = container.recordingStorage.createOutputFile(generatedName)
+                val createdFile = container.recordingStorage.createTempOutputFile(generatedName)
                 val createdRecorder = if (recordingFormat.usesPcmRecorder) {
                     PcmRecordingBackend(
+                        context = this@RecordingService,
                         file = createdFile,
                         format = recordingFormat,
                         bitrate = recordingBitrate,
@@ -141,6 +144,7 @@ class RecordingService : LifecycleService() {
                 recordingBackend = createdRecorder
                 recorder = createdRecorder
                 outputFile = createdFile
+                outputGeneratedName = generatedName
                 outputDisplayName = generatedName.displayName
                 outputFormat = recordingFormat
                 outputBitrate = recordingBitrate
@@ -219,6 +223,7 @@ class RecordingService : LifecycleService() {
         ticker?.cancel()
         lifecycleScope.launch {
             val file = outputFile
+            val generatedName = outputGeneratedName
             val displayName = outputDisplayName
             val activeFormat = outputFormat
             val activeBitrate = outputBitrate
@@ -229,11 +234,18 @@ class RecordingService : LifecycleService() {
             try {
                 activeRecorder.stop()
                 cleanupRecorder()
-                if (save && file != null && file.exists() && file.length() > 0) {
+                if (save && file != null && generatedName != null && file.exists() && file.length() > 0) {
                     val settings = container.settingsRepository.settings.first()
                     val recordingFormat = activeFormat ?: settings.recordingFormat
-                    val id = container.recordingRepository.addFromFile(
-                        file = file,
+                    val saveResult = container.recordingStorage.publishRecording(
+                        tempFile = file,
+                        generatedName = generatedName,
+                        location = settings.recordingStorageLocation,
+                        format = recordingFormat.storageValue,
+                        customFolderUri = settings.customRecordingFolderUri,
+                    )
+                    val id = container.recordingRepository.addFromSaveResult(
+                        saveResult = saveResult,
                         name = displayName.orEmpty(),
                         durationMs = elapsed,
                         bitrate = activeBitrate.takeIf { it > 0 } ?: recordingFormat.bitrateFor(settings.bitrate),
@@ -241,7 +253,11 @@ class RecordingService : LifecycleService() {
                         format = recordingFormat.storageValue,
                         location = location,
                     )
-                    val savedMessage = getString(R.string.recorder_saved_message)
+                    val savedMessage = if (saveResult.fellBackToAppFiles) {
+                        getString(R.string.recorder_saved_to_app_files_message)
+                    } else {
+                        getString(R.string.recorder_saved_message)
+                    }
                     RecordingStateHolder.update(
                         RecorderUiState(
                             status = RecorderStatus.Saved,
@@ -332,6 +348,7 @@ class RecordingService : LifecycleService() {
         runCatching { recorder?.release() }
         recorder = null
         outputFile = null
+        outputGeneratedName = null
         outputDisplayName = null
         outputFormat = null
         outputBitrate = 0
@@ -345,7 +362,6 @@ class RecordingService : LifecycleService() {
     }
 
     private fun ensureChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             CHANNEL_ID,
             getString(R.string.notification_channel_name),
@@ -372,7 +388,6 @@ class RecordingService : LifecycleService() {
     }
 
     private fun ensureSavedChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             SAVED_CHANNEL_ID,
             getString(R.string.notification_saved_channel_name),

@@ -36,6 +36,7 @@
     <string name="recorder_discard_confirm_title">Discard recording?</string>
     <string name="recorder_discard_confirm_message">All recorded audio will be permanently deleted. This cannot be undone.</string>
     <string name="recorder_saved_message">Recording saved.</string>
+    <string name="recorder_saved_to_app_files_message">Recording saved to app files. The selected folder is unavailable.</string>
     <string name="recorder_start_failed">Recording could not start.</string>
     <string name="recorder_audio_input_current">Recording input</string>
     <string name="recorder_audio_input_preferred">Audio input device</string>
@@ -75,10 +76,16 @@
     <string name="sort_shortest">Shortest</string>
 
     <!-- Player Controls -->
-    <string name="player_skip_back">Skip back %1$d seconds</string>
+    <plurals name="player_skip_back">
+        <item quantity="one">Skip back %1$d second</item>
+        <item quantity="other">Skip back %1$d seconds</item>
+    </plurals>
     <string name="player_pause">Pause playback</string>
     <string name="player_play">Play recording</string>
-    <string name="player_skip_forward">Skip forward %1$d seconds</string>
+    <plurals name="player_skip_forward">
+        <item quantity="one">Skip forward %1$d second</item>
+        <item quantity="other">Skip forward %1$d seconds</item>
+    </plurals>
     <string name="player_skip_seconds_label">%1$ds</string>
     <string name="player_toggle_remaining_time">Toggle duration and remaining time</string>
 
@@ -125,25 +132,36 @@
     <string name="settings_file_name_template_preview_label">Preview</string>
     <string name="settings_file_name_template_preview">%1$s.%2$s</string>
     <string name="settings_file_name_template_reset">Reset</string>
+    <string name="settings_save_location">Save location</string>
+    <string name="settings_save_location_app_files">App files</string>
+    <string name="settings_save_location_device_music">Device storage (Music/SoundMemo)</string>
+    <string name="settings_save_location_app_files_permission_denied">Storage permission was denied. New recordings will save to app files.</string>
+    <string name="settings_save_location_custom_folder">Custom folder</string>
+    <string name="settings_save_location_custom_folder_named">Custom folder (%1$s)</string>
+    <string name="settings_storage_internal">Internal storage</string>
+    <string name="settings_storage_internal_path">Internal storage/%1$s</string>
     <string name="settings_keep_screen_awake">Keep screen awake while recording</string>
     <string name="settings_rewind_seconds">Default rewind interval</string>
     <string name="settings_forward_seconds">Default forward interval</string>
-    <string name="settings_skip_seconds_value">%1$d seconds</string>
+    <plurals name="settings_skip_seconds_value">
+        <item quantity="one">%1$d second</item>
+        <item quantity="other">%1$d seconds</item>
+    </plurals>
     <string name="settings_record_location">Save recording location</string>
     <string name="settings_record_location_desc">Save coordinates in SoundMemo for new recordings.</string>
     <string name="settings_write_location_to_media_file">Write location to audio file</string>
     <string name="settings_write_location_to_media_file_desc">Include coordinates in supported audio metadata when sharing or exporting recordings.</string>
     <string name="settings_local_only">Local-first recordings</string>
-    <string name="settings_local_only_desc">SoundMemo has no account, ads, analytics, or in-app cloud upload. Android system backup or device transfer may include app data if enabled in system settings.</string>
+    <string name="settings_local_only_desc">SoundMemo has no account, ads, analytics, or in-app cloud upload. Android system backup or device transfer may include app preferences if enabled. App-file recordings and the library database are excluded; device storage recordings remain in Music/SoundMemo.</string>
     <string name="privacy_claims_title">Privacy summary</string>
     <string name="privacy_claim_no_account">No account required</string>
     <string name="privacy_claim_no_account_desc">You can record, play, rename, share, and delete recordings without signing in.</string>
     <string name="privacy_claim_no_tracking">No ads or analytics</string>
     <string name="privacy_claim_no_tracking_desc">SoundMemo does not include advertising SDKs or analytics tracking.</string>
     <string name="privacy_claim_no_cloud">No in-app cloud upload</string>
-    <string name="privacy_claim_no_cloud_desc">Recordings are saved locally in app storage unless you choose to share or export them.</string>
+    <string name="privacy_claim_no_cloud_desc">Recordings are saved locally in the storage location you choose unless you share or export them.</string>
     <string name="privacy_claim_system_backup">System backup may apply</string>
-    <string name="privacy_claim_system_backup_desc">Android system backup or device transfer may include app data if you enabled those features in system settings.</string>
+    <string name="privacy_claim_system_backup_desc">Android system backup or device transfer may include app preferences if enabled. App-file recordings and the library database are excluded; device storage recordings remain in Music/SoundMemo.</string>
     <string name="settings_about_app">SoundMemo</string>
     <string name="settings_about_desc">Open source Android voice recorder</string>
     <string name="settings_version_code">Version code: %1$d</string>

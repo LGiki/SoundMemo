@@ -2,7 +2,6 @@ package net.lgiki.soundmemo.service.audio
 
 import android.media.AudioDeviceInfo
 import android.media.AudioFormat
-import android.os.Build
 import net.lgiki.soundmemo.data.settings.RecordingChannelMode
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 
@@ -38,7 +37,6 @@ private val RecordingFormat.supportsStereoRecording: Boolean
 
 private object AudioChannelSupport {
     fun supportsStereo(preferredDevice: AudioDeviceInfo?): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
         if (preferredDevice == null) return true
         return preferredDevice.channelCounts.any { it == RecordingChannels.Stereo.channelCount }
     }

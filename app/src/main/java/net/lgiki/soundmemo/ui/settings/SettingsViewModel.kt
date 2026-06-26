@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.lgiki.soundmemo.data.settings.AppSettings
 import net.lgiki.soundmemo.data.settings.RecordingChannelMode
+import net.lgiki.soundmemo.data.settings.RecordingStorageLocation
 import net.lgiki.soundmemo.data.settings.SettingsRepository
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.data.storage.DEFAULT_RECORDING_NAME_TEMPLATE
@@ -29,7 +30,7 @@ class SettingsViewModel(
     val settings = repository.settings.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
-        net.lgiki.soundmemo.data.settings.AppSettings(),
+        net.lgiki.soundmemo.data.settings.AppSettings(recordingStorageLocationInitialized = true),
     )
 
     private val _bitrateOptions = MutableStateFlow(
@@ -85,6 +86,12 @@ class SettingsViewModel(
     fun setRecordingFormat(format: RecordingFormat) = viewModelScope.launch { repository.setRecordingFormat(format) }
     fun setRecordingChannelMode(mode: RecordingChannelMode) = viewModelScope.launch { repository.setRecordingChannelMode(mode) }
     fun setPreferredAudioInput(preference: AudioInputPreference?) = viewModelScope.launch { repository.setPreferredAudioInput(preference) }
+    fun setRecordingStorageLocation(location: RecordingStorageLocation) =
+        viewModelScope.launch { repository.setRecordingStorageLocation(location) }
+    fun setCustomRecordingFolder(uri: String, name: String) =
+        viewModelScope.launch { repository.setCustomRecordingFolder(uri, name) }
+    fun clearCustomRecordingFolder() =
+        viewModelScope.launch { repository.clearCustomRecordingFolder() }
     fun setBitrate(value: Int) = viewModelScope.launch { repository.setBitrate(value) }
     fun setRecordingNameTemplate(template: String) = viewModelScope.launch { repository.setRecordingNameTemplate(template) }
     fun resetRecordingNameTemplate() = viewModelScope.launch { repository.setRecordingNameTemplate(DEFAULT_RECORDING_NAME_TEMPLATE) }

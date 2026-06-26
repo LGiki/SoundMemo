@@ -2,6 +2,7 @@ package net.lgiki.soundmemo.data.repository
 
 import net.lgiki.soundmemo.data.db.RecordingDao
 import net.lgiki.soundmemo.data.model.Recording
+import net.lgiki.soundmemo.data.storage.RecordingSaveResult
 import net.lgiki.soundmemo.domain.recorder.RecordingLocation
 import java.io.File
 import kotlinx.coroutines.flow.Flow
@@ -34,6 +35,32 @@ class RecordingRepository(private val dao: RecordingDao) {
         ),
     )
 
+    suspend fun addFromSaveResult(
+        saveResult: RecordingSaveResult,
+        name: String,
+        durationMs: Long,
+        bitrate: Int,
+        sampleRate: Int,
+        format: String,
+        location: RecordingLocation?,
+    ): Long = dao.insert(
+        Recording(
+            name = name.trim().ifBlank { File(saveResult.filePath).toRecordingName() },
+            filePath = saveResult.filePath,
+            fileSizeBytes = saveResult.fileSizeBytes,
+            storageType = saveResult.storageType,
+            storageUri = saveResult.storageUri,
+            durationMs = durationMs,
+            format = format,
+            bitrate = bitrate,
+            sampleRate = sampleRate,
+            locationLatitude = location?.latitude,
+            locationLongitude = location?.longitude,
+            locationAccuracyMeters = location?.accuracyMeters,
+            locationCapturedAt = location?.capturedAt,
+        ),
+    )
+
     suspend fun get(id: Long): Recording? = dao.getById(id)
 
     suspend fun rename(id: Long, name: String) {
@@ -54,26 +81,26 @@ class RecordingRepository(private val dao: RecordingDao) {
         }
     }
 
-    suspend fun deletePermanently(id: Long, deleteFile: (String) -> Boolean) {
+    suspend fun deletePermanently(id: Long, deleteRecording: (Recording) -> Boolean) {
         dao.getById(id)?.let {
-            if (deleteFile(it.filePath)) {
+            if (deleteRecording(it)) {
                 dao.deletePermanently(id)
             }
         }
     }
 
-    suspend fun emptyRecycleBin(deleteFile: (String) -> Boolean) {
+    suspend fun emptyRecycleBin(deleteRecording: (Recording) -> Boolean) {
         dao.deletedRecordingsOnce().forEach { recording ->
-            if (deleteFile(recording.filePath)) {
+            if (deleteRecording(recording)) {
                 dao.deletePermanently(recording.id)
             }
         }
     }
 
-    suspend fun purgeExpired(retentionDays: Int, deleteFile: (String) -> Boolean) {
+    suspend fun purgeExpired(retentionDays: Int, deleteRecording: (Recording) -> Boolean) {
         val cutoff = System.currentTimeMillis() - retentionDays.coerceAtLeast(1) * 24L * 60L * 60L * 1000L
         dao.deletedBefore(cutoff).forEach { recording ->
-            if (deleteFile(recording.filePath)) {
+            if (deleteRecording(recording)) {
                 dao.deletePermanently(recording.id)
             }
         }

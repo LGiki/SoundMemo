@@ -1,10 +1,13 @@
 package net.lgiki.soundmemo.service.audio
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioDeviceInfo
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.os.Build
+import androidx.core.content.ContextCompat
 import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
@@ -16,6 +19,7 @@ import net.lgiki.soundmemo.domain.recorder.AudioInputRoute
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 
 internal class PcmRecordingBackend(
+    private val context: Context,
     private val file: File,
     private val format: RecordingFormat,
     private val bitrate: Int,
@@ -32,13 +36,7 @@ internal class PcmRecordingBackend(
         minBufferSize.coerceAtLeast(0) / WavHeader.BYTES_PER_SAMPLE,
         sampleRate * channels.channelCount / 5,
     )
-    private val audioRecord = AudioRecord(
-        MediaRecorder.AudioSource.MIC,
-        sampleRate,
-        channels.inputChannelMask,
-        AudioFormat.ENCODING_PCM_16BIT,
-        bufferSize * WavHeader.BYTES_PER_SAMPLE,
-    )
+    private var audioRecord: AudioRecord? = null
     private val amplitude = AtomicInteger(0)
     private val failure = AtomicReference<Throwable?>(null)
     @Volatile private var running = false
@@ -51,41 +49,40 @@ internal class PcmRecordingBackend(
         get() = amplitude.getAndSet(0)
 
     override val routedDevice: AudioInputRoute?
-        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !released) {
-            runCatching { audioRecord.routedDevice?.toAudioInputRoute() }.getOrNull()
+        get() = if (!released) {
+            runCatching { audioRecord?.routedDevice?.toAudioInputRoute() }.getOrNull()
         } else {
             null
         }
 
     override fun start() {
-        check(audioRecord.state == AudioRecord.STATE_INITIALIZED) { "AudioRecord could not initialize" }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            preferredDevice?.let { audioRecord.setPreferredDevice(it) }
-        }
+        val activeAudioRecord = createAudioRecord().also { audioRecord = it }
+        check(activeAudioRecord.state == AudioRecord.STATE_INITIALIZED) { "AudioRecord could not initialize" }
+        preferredDevice?.let { activeAudioRecord.setPreferredDevice(it) }
         writer = when (format) {
             RecordingFormat.Wav -> WavAudioWriter(file, sampleRate, channels.channelCount)
             RecordingFormat.Mp3 -> Mp3AudioWriter(file, sampleRate, bitrate, channels.channelCount)
             else -> error("PCM recorder does not support $format")
         }
         running = true
-        audioRecord.startRecording()
+        activeAudioRecord.startRecording()
         worker = Thread(::recordLoop, "SoundMemoPcmRecorder").apply { start() }
     }
 
     override fun pause() {
         paused = true
-        runCatching { audioRecord.stop() }
+        runCatching { audioRecord?.stop() }
         amplitude.set(0)
     }
 
     override fun resume() {
-        audioRecord.startRecording()
+        audioRecord?.startRecording()
         paused = false
     }
 
     override fun stop() {
         running = false
-        runCatching { audioRecord.stop() }
+        runCatching { audioRecord?.stop() }
         worker?.join()
         val activeWriter = writer
         writer = null
@@ -99,9 +96,23 @@ internal class PcmRecordingBackend(
         if (released) return
         released = true
         running = false
-        runCatching { audioRecord.release() }
+        runCatching { audioRecord?.release() }
+        audioRecord = null
         runCatching { writer?.close() }
         writer = null
+    }
+
+    private fun createAudioRecord(): AudioRecord {
+        check(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED,
+        ) { "Microphone permission is required" }
+        return AudioRecord(
+            MediaRecorder.AudioSource.MIC,
+            sampleRate,
+            channels.inputChannelMask,
+            AudioFormat.ENCODING_PCM_16BIT,
+            bufferSize * WavHeader.BYTES_PER_SAMPLE,
+        )
     }
 
     private fun recordLoop() {
@@ -112,7 +123,7 @@ internal class PcmRecordingBackend(
                     Thread.sleep(PAUSED_READ_SLEEP_MS)
                     continue
                 }
-                val read = audioRecord.read(samples, 0, samples.size)
+                val read = audioRecord?.read(samples, 0, samples.size) ?: break
                 if (read <= 0) continue
                 if (paused) {
                     amplitude.set(0)

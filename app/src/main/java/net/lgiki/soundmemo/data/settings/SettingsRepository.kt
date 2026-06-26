@@ -39,6 +39,12 @@ class SettingsRepository(context: Context) {
                 type = prefs[PREFERRED_AUDIO_INPUT_TYPE],
                 productName = prefs[PREFERRED_AUDIO_INPUT_NAME],
             ),
+            recordingStorageLocation = prefs[RECORDING_STORAGE_LOCATION]
+                ?.let { runCatching { RecordingStorageLocation.valueOf(it) }.getOrNull() }
+                ?: RecordingStorageLocation.DeviceMusic,
+            recordingStorageLocationInitialized = prefs[RECORDING_STORAGE_LOCATION] != null,
+            customRecordingFolderUri = prefs[CUSTOM_RECORDING_FOLDER_URI],
+            customRecordingFolderName = prefs[CUSTOM_RECORDING_FOLDER_NAME],
             recordingNameTemplate = normalizeRecordingNameTemplate(prefs[RECORDING_NAME_TEMPLATE]),
             keepScreenAwake = prefs[KEEP_SCREEN_AWAKE] ?: true,
             recordLocation = prefs[RECORD_LOCATION] ?: false,
@@ -89,6 +95,28 @@ class SettingsRepository(context: Context) {
                 preference.id?.let { id -> it[PREFERRED_AUDIO_INPUT_ID] = id } ?: it.remove(PREFERRED_AUDIO_INPUT_ID)
                 it[PREFERRED_AUDIO_INPUT_TYPE] = preference.type
                 it[PREFERRED_AUDIO_INPUT_NAME] = preference.productName
+            }
+        }
+    }
+
+    suspend fun setRecordingStorageLocation(location: RecordingStorageLocation) {
+        dataStore.edit { it[RECORDING_STORAGE_LOCATION] = location.name }
+    }
+
+    suspend fun setCustomRecordingFolder(uri: String, name: String) {
+        dataStore.edit {
+            it[CUSTOM_RECORDING_FOLDER_URI] = uri
+            it[CUSTOM_RECORDING_FOLDER_NAME] = name
+            it[RECORDING_STORAGE_LOCATION] = RecordingStorageLocation.CustomFolder.name
+        }
+    }
+
+    suspend fun clearCustomRecordingFolder() {
+        dataStore.edit {
+            it.remove(CUSTOM_RECORDING_FOLDER_URI)
+            it.remove(CUSTOM_RECORDING_FOLDER_NAME)
+            if (it[RECORDING_STORAGE_LOCATION] == RecordingStorageLocation.CustomFolder.name) {
+                it[RECORDING_STORAGE_LOCATION] = RecordingStorageLocation.AppFiles.name
             }
         }
     }
@@ -158,6 +186,9 @@ class SettingsRepository(context: Context) {
         val PREFERRED_AUDIO_INPUT_ID = intPreferencesKey("preferred_audio_input_id")
         val PREFERRED_AUDIO_INPUT_TYPE = intPreferencesKey("preferred_audio_input_type")
         val PREFERRED_AUDIO_INPUT_NAME = stringPreferencesKey("preferred_audio_input_name")
+        val RECORDING_STORAGE_LOCATION = stringPreferencesKey("recording_storage_location")
+        val CUSTOM_RECORDING_FOLDER_URI = stringPreferencesKey("custom_recording_folder_uri")
+        val CUSTOM_RECORDING_FOLDER_NAME = stringPreferencesKey("custom_recording_folder_name")
         val RECORDING_NAME_TEMPLATE = stringPreferencesKey("recording_name_template")
         val KEEP_SCREEN_AWAKE = booleanPreferencesKey("keep_screen_awake")
         val RECORD_LOCATION = booleanPreferencesKey("record_location")

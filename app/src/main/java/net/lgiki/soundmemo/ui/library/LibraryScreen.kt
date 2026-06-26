@@ -62,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -531,8 +532,8 @@ private fun TransportControls(
     forwardSeconds: Int,
     onSkipForward: () -> Unit,
 ) {
-    val skipBackDescription = stringResource(R.string.player_skip_back, rewindSeconds)
-    val skipForwardDescription = stringResource(R.string.player_skip_forward, forwardSeconds)
+    val skipBackDescription = pluralStringResource(R.plurals.player_skip_back, rewindSeconds, rewindSeconds)
+    val skipForwardDescription = pluralStringResource(R.plurals.player_skip_forward, forwardSeconds, forwardSeconds)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),

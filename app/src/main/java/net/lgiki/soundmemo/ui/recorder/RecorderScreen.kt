@@ -581,7 +581,7 @@ private fun RecordingVuMeter(
         0f
     }
     val level = sqrt(linearLevel).coerceIn(0f, 1f)
-    val valueText = VuMeterValueText(
+    val valueText = vuMeterValueText(
         display = valueDisplay,
         linearLevel = linearLevel,
         visibleLevel = level,
@@ -652,7 +652,7 @@ private fun RecordingVuMeter(
 }
 
 @Composable
-private fun VuMeterValueText(
+private fun vuMeterValueText(
     display: VuMeterValueDisplay,
     linearLevel: Float,
     visibleLevel: Float,

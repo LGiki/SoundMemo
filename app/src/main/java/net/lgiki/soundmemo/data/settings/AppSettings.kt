@@ -14,6 +14,10 @@ data class AppSettings(
     val bitrate: Int = 128_000,
     val sampleRate: Int = 44_100,
     val preferredAudioInput: AudioInputPreference? = null,
+    val recordingStorageLocation: RecordingStorageLocation = RecordingStorageLocation.DeviceMusic,
+    val recordingStorageLocationInitialized: Boolean = false,
+    val customRecordingFolderUri: String? = null,
+    val customRecordingFolderName: String? = null,
     val recordingNameTemplate: String = DEFAULT_RECORDING_NAME_TEMPLATE,
     val keepScreenAwake: Boolean = true,
     val recordLocation: Boolean = false,
@@ -45,4 +49,10 @@ enum class VuMeterValueDisplay {
 enum class RecordingChannelMode {
     Mono,
     Stereo,
+}
+
+enum class RecordingStorageLocation {
+    AppFiles,
+    DeviceMusic,
+    CustomFolder,
 }

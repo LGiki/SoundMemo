@@ -19,7 +19,7 @@ Use Kotlin with Java 11 bytecode, Jetpack Compose for UI, Material 3 components,
 
 ## Implementation Notes
 
-The app targets Android API 26+ and currently uses a small manual dependency container in `SoundMemoContainer` exposed by `SoundMemoApplication`; extend that wiring before introducing a dependency-injection framework. Recordings are M4A/AAC files stored in app-specific storage under `files/recordings`, with share access mediated by the configured `FileProvider`. Recording metadata lives in the Room `recordings` table, so schema changes require explicit migrations in `SoundMemoDatabase`. Settings use the `soundmemo_settings` Preferences DataStore. When adding location, export, sharing, or storage behavior, preserve the local-first model and keep metadata writes opt-in where existing settings make them opt-in.
+The app targets Android API 26+ and currently uses a small manual dependency container in `SoundMemoContainer` exposed by `SoundMemoApplication`; extend that wiring before introducing a dependency-injection framework. Recordings are staged in app cache, then published to the selected save location: app-specific files under `Music/recordings` or public device storage under `Music/SoundMemo` via MediaStore where available. Sharing and deletion must go through `RecordingStorage` so both file paths and content URIs work. Recording metadata lives in the Room `recordings` table, so schema changes require explicit migrations in `SoundMemoDatabase`. Settings use the `soundmemo_settings` Preferences DataStore. When adding location, export, sharing, or storage behavior, preserve the local-first model and keep metadata writes opt-in where existing settings make them opt-in.
 
 ## Testing Guidelines
 

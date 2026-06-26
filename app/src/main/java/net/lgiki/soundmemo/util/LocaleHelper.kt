@@ -3,7 +3,6 @@ package net.lgiki.soundmemo.util
 import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
-import android.os.Build
 import java.util.Locale
 
 const val SYSTEM_LOCALE_TAG = "system"
@@ -11,12 +10,7 @@ const val SYSTEM_LOCALE_TAG = "system"
 fun resolveLocale(tag: String): Locale {
     return if (tag == SYSTEM_LOCALE_TAG) {
         val config = Resources.getSystem().configuration
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            config.locales[0]
-        } else {
-            @Suppress("DEPRECATION")
-            config.locale
-        }
+        config.locales[0]
     } else {
         Locale.forLanguageTag(tag)
     }

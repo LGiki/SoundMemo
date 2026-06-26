@@ -10,14 +10,12 @@ class LameMp3EncoderTest {
     @Test
     fun encodeAndFlush_producesMp3Bytes() {
         val encoder = LameMp3Encoder(sampleRate = 44_100, bitrate = 128_000, channelCount = 1)
-        try {
+        encoder.use { encoder ->
             val samples = ShortArray(44_100 / 10)
             val encoded = encoder.encode(samples, samples.size) + encoder.flush()
 
             assertTrue(encoded.isNotEmpty())
             assertTrue(encoded.hasMp3FrameSync())
-        } finally {
-            encoder.close()
         }
     }
 

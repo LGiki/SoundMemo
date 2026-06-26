@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -31,7 +30,7 @@ data class LibraryUiState(
 class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() {
     private val query = MutableStateFlow("")
     private val sort = MutableStateFlow(RecordingSort.Newest)
-    val playback = PlaybackController(container.appContext, container.settingsRepository)
+    val playback = PlaybackController(container.appContext, container.settingsRepository, container.recordingStorage)
 
     init {
         viewModelScope.launch {
@@ -39,7 +38,7 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
                 .map { it.recycleRetentionDays }
                 .distinctUntilChanged()
                 .collect { retentionDays ->
-                    container.recordingRepository.purgeExpired(retentionDays, container.recordingStorage::deleteFile)
+                    container.recordingRepository.purgeExpired(retentionDays, container.recordingStorage::deleteRecording)
                 }
         }
     }
@@ -89,16 +88,14 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
 
     fun deletePermanently(id: Long) {
         viewModelScope.launch {
-            container.recordingRepository.deletePermanently(id, container.recordingStorage::deleteFile)
+            container.recordingRepository.deletePermanently(id, container.recordingStorage::deleteRecording)
         }
     }
 
     fun share(context: Context, recording: Recording) {
-        val file = File(recording.filePath)
-        if (!file.exists()) return
-        val uri = container.recordingStorage.shareUri(file)
+        val uri = container.recordingStorage.shareUri(recording) ?: return
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "audio/mp4"
+            type = shareMimeType(recording.format)
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
@@ -108,6 +105,15 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
     override fun onCleared() {
         playback.release()
     }
+}
+
+internal fun shareMimeType(format: String): String = when (format.lowercase()) {
+    "m4a" -> "audio/mp4"
+    "aac" -> "audio/aac"
+    "3gp" -> "audio/3gpp"
+    "wav" -> "audio/wav"
+    "mp3" -> "audio/mpeg"
+    else -> "audio/*"
 }
 
 private fun RecordingSort.comparator(): Comparator<Recording> =

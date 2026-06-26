@@ -8,7 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import net.lgiki.soundmemo.data.model.Recording
 
-@Database(entities = [Recording::class], version = 2, exportSchema = false)
+@Database(entities = [Recording::class], version = 3, exportSchema = true)
 abstract class SoundMemoDatabase : RoomDatabase() {
     abstract fun recordingDao(): RecordingDao
 
@@ -22,17 +22,24 @@ abstract class SoundMemoDatabase : RoomDatabase() {
                     SoundMemoDatabase::class.java,
                     "soundmemo.db",
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                     .also { instance = it }
             }
 
-        private val MIGRATION_1_2 = object : Migration(1, 2) {
+        val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE recordings ADD COLUMN locationLatitude REAL")
                 db.execSQL("ALTER TABLE recordings ADD COLUMN locationLongitude REAL")
                 db.execSQL("ALTER TABLE recordings ADD COLUMN locationAccuracyMeters REAL")
                 db.execSQL("ALTER TABLE recordings ADD COLUMN locationCapturedAt INTEGER")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE recordings ADD COLUMN storageType TEXT NOT NULL DEFAULT 'file'")
+                db.execSQL("ALTER TABLE recordings ADD COLUMN storageUri TEXT")
             }
         }
     }

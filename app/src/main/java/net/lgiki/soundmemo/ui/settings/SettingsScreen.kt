@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -46,6 +47,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
@@ -68,6 +71,7 @@ import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.EditLocationAlt
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
@@ -85,6 +89,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.roundToInt
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.data.settings.RecordingChannelMode
+import net.lgiki.soundmemo.data.settings.RecordingStorageLocation
 import net.lgiki.soundmemo.data.settings.ThemeMode
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
 import net.lgiki.soundmemo.domain.recorder.AacBitrateOptions
@@ -140,6 +145,60 @@ fun SettingsScreen(
                     Manifest.permission.ACCESS_COARSE_LOCATION,
                 ),
             )
+        }
+    }
+    fun hasStoragePermission(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+    val storagePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted || hasStoragePermission()) {
+            viewModel.setRecordingStorageLocation(RecordingStorageLocation.DeviceMusic)
+        } else {
+            viewModel.setRecordingStorageLocation(RecordingStorageLocation.AppFiles)
+        }
+    }
+    fun hasCustomFolderWritePermission(uri: Uri): Boolean =
+        context.contentResolver.persistedUriPermissions.any {
+            it.uri == uri && it.isWritePermission
+        }
+    fun customFolderPath(uri: Uri): String {
+        val documentId = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull()
+        val volume = documentId?.substringBefore(':', missingDelimiterValue = "")
+        val path = documentId?.substringAfter(':', missingDelimiterValue = "")?.trim('/')
+        return when {
+            volume == "primary" && path.isNullOrBlank() -> context.getString(R.string.settings_storage_internal)
+            volume == "primary" -> context.getString(R.string.settings_storage_internal_path, path)
+            !volume.isNullOrBlank() && path.isNullOrBlank() -> volume
+            !volume.isNullOrBlank() -> "$volume/$path"
+            else -> null
+        }
+            ?: uri.lastPathSegment
+            ?: context.getString(R.string.settings_save_location_custom_folder)
+    }
+    val customFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri != null) {
+            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            val persisted = runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, flags)
+            }.isSuccess || hasCustomFolderWritePermission(uri)
+            if (persisted) {
+                viewModel.setCustomRecordingFolder(uri.toString(), customFolderPath(uri))
+            }
+        }
+    }
+    fun selectRecordingStorageLocation(location: RecordingStorageLocation) {
+        when {
+            location == RecordingStorageLocation.DeviceMusic && !hasStoragePermission() -> {
+                storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+            location == RecordingStorageLocation.CustomFolder -> {
+                customFolderLauncher.launch(null)
+            }
+            else -> viewModel.setRecordingStorageLocation(location)
         }
     }
     LaunchedEffect(settings.recordLocation) {
@@ -240,6 +299,16 @@ fun SettingsScreen(
                         onClick = { openDialog = SettingsDialog.FileNameTemplate },
                     )
                     PreferenceDivider()
+                    PreferenceRow(
+                        leadingIcon = Icons.Default.Folder,
+                        headline = stringResource(R.string.settings_save_location),
+                        supporting = recordingStorageLocationLabel(
+                            location = settings.recordingStorageLocation,
+                            customFolderName = settings.customRecordingFolderName,
+                        ),
+                        onClick = { openDialog = SettingsDialog.StorageLocation },
+                    )
+                    PreferenceDivider()
                     SettingListItem(
                         leadingIcon = Icons.Default.Visibility,
                         headline = stringResource(R.string.settings_keep_screen_awake),
@@ -255,14 +324,22 @@ fun SettingsScreen(
                     PreferenceRow(
                         leadingIcon = Icons.Default.FastRewind,
                         headline = stringResource(R.string.settings_rewind_seconds),
-                        supporting = stringResource(R.string.settings_skip_seconds_value, settings.rewindSeconds),
+                        supporting = pluralStringResource(
+                            R.plurals.settings_skip_seconds_value,
+                            settings.rewindSeconds,
+                            settings.rewindSeconds,
+                        ),
                         onClick = { openDialog = SettingsDialog.RewindSeconds },
                     )
                     PreferenceDivider()
                     PreferenceRow(
                         leadingIcon = Icons.Default.FastForward,
                         headline = stringResource(R.string.settings_forward_seconds),
-                        supporting = stringResource(R.string.settings_skip_seconds_value, settings.forwardSeconds),
+                        supporting = pluralStringResource(
+                            R.plurals.settings_skip_seconds_value,
+                            settings.forwardSeconds,
+                            settings.forwardSeconds,
+                        ),
                         onClick = { openDialog = SettingsDialog.ForwardSeconds },
                     )
                 }
@@ -425,6 +502,24 @@ fun SettingsScreen(
             },
             onReset = {
                 viewModel.resetRecordingNameTemplate()
+                openDialog = null
+            },
+            onDismiss = { openDialog = null },
+        )
+        SettingsDialog.StorageLocation -> SingleChoiceSettingsDialog(
+            title = stringResource(R.string.settings_save_location),
+            options = RecordingStorageLocation.entries.map { location ->
+                SettingsOption(
+                    location,
+                    recordingStorageLocationLabel(
+                        location = location,
+                        customFolderName = settings.customRecordingFolderName,
+                    ),
+                )
+            },
+            selected = settings.recordingStorageLocation,
+            onSelect = {
+                selectRecordingStorageLocation(it)
                 openDialog = null
             },
             onDismiss = { openDialog = null },
@@ -879,6 +974,20 @@ private fun recordingChannelModeLabel(mode: RecordingChannelMode): String = when
     RecordingChannelMode.Stereo -> stringResource(R.string.settings_recording_channels_stereo)
 }
 
+@Composable
+private fun recordingStorageLocationLabel(
+    location: RecordingStorageLocation,
+    customFolderName: String? = null,
+): String = when (location) {
+    RecordingStorageLocation.AppFiles -> stringResource(R.string.settings_save_location_app_files)
+    RecordingStorageLocation.DeviceMusic -> stringResource(R.string.settings_save_location_device_music)
+    RecordingStorageLocation.CustomFolder -> if (customFolderName.isNullOrBlank()) {
+        stringResource(R.string.settings_save_location_custom_folder)
+    } else {
+        stringResource(R.string.settings_save_location_custom_folder_named, customFolderName)
+    }
+}
+
 private fun bitrateValuesFor(recordingFormat: RecordingFormat, deviceAacValues: List<Int>): List<Int> =
     if (recordingFormat.usesAacBitrateRange) {
         deviceAacValues
@@ -967,14 +1076,14 @@ private fun SkipSecondsDialog(
     onSave: (Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var seconds by remember(initialSeconds) { mutableStateOf(initialSeconds.coerceIn(MIN_SKIP_SECONDS, MAX_SKIP_SECONDS)) }
+    var seconds by remember(initialSeconds) { mutableIntStateOf(initialSeconds.coerceIn(MIN_SKIP_SECONDS, MAX_SKIP_SECONDS)) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
-                    text = stringResource(R.string.settings_skip_seconds_value, seconds),
+                    text = pluralStringResource(R.plurals.settings_skip_seconds_value, seconds, seconds),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.fillMaxWidth(),
@@ -1031,6 +1140,7 @@ private enum class SettingsDialog {
     RecordingChannels,
     Bitrate,
     FileNameTemplate,
+    StorageLocation,
     RewindSeconds,
     ForwardSeconds,
 }

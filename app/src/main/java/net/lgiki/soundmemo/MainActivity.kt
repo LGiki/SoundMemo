@@ -3,8 +3,10 @@ package net.lgiki.soundmemo
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -24,6 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -36,6 +41,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import net.lgiki.soundmemo.data.settings.RecordingStorageLocation
 import net.lgiki.soundmemo.ui.SoundMemoViewModelFactory
 import net.lgiki.soundmemo.ui.library.LibraryScreen
 import net.lgiki.soundmemo.ui.library.LibraryViewModel
@@ -63,6 +69,41 @@ class MainActivity : ComponentActivity() {
             val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
             val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
             val darkTheme = shouldUseDarkTheme(settings)
+            val context = LocalContext.current
+            var requestedInitialStoragePermission by remember { mutableStateOf(false) }
+            val initialStoragePermissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission(),
+            ) { granted ->
+                if (granted) {
+                    settingsViewModel.setRecordingStorageLocation(RecordingStorageLocation.DeviceMusic)
+                } else {
+                    settingsViewModel.setRecordingStorageLocation(RecordingStorageLocation.AppFiles)
+                    Toast.makeText(
+                        context,
+                        R.string.settings_save_location_app_files_permission_denied,
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+            LaunchedEffect(settings.recordingStorageLocationInitialized) {
+                if (
+                    !settings.recordingStorageLocationInitialized &&
+                    !requestedInitialStoragePermission &&
+                    Build.VERSION.SDK_INT <= Build.VERSION_CODES.P
+                ) {
+                    if (
+                        ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        settingsViewModel.setRecordingStorageLocation(RecordingStorageLocation.DeviceMusic)
+                    } else {
+                        requestedInitialStoragePermission = true
+                        initialStoragePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    }
+                }
+            }
             LaunchedEffect(settings.keepScreenAwake) {
                 if (settings.keepScreenAwake) {
                     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

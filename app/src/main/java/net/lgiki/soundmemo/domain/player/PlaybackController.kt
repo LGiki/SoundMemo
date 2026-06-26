@@ -1,13 +1,11 @@
 package net.lgiki.soundmemo.domain.player
 
 import android.content.Context
-import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,10 +16,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import net.lgiki.soundmemo.data.model.Recording
 import net.lgiki.soundmemo.data.settings.SettingsRepository
+import net.lgiki.soundmemo.data.storage.RecordingStorage
 
 class PlaybackController(
     context: Context,
     private val settingsRepository: SettingsRepository,
+    private val recordingStorage: RecordingStorage,
 ) {
     private val appContext = context.applicationContext
     private val scopeJob = SupervisorJob()
@@ -64,12 +64,13 @@ class PlaybackController(
     }
 
     fun play(recording: Recording) {
-        if (!File(recording.filePath).exists()) {
+        val uri = recordingStorage.playbackUri(recording)
+        if (uri == null) {
             mutableState.value = mutableState.value.copy(error = appContext.getString(net.lgiki.soundmemo.R.string.playback_file_missing))
             return
         }
         mutableState.value = mutableState.value.copy(recording = recording, error = null, durationMs = recording.durationMs)
-        player.setMediaItem(MediaItem.fromUri(Uri.fromFile(File(recording.filePath))))
+        player.setMediaItem(MediaItem.fromUri(uri))
         player.prepare()
         player.play()
     }

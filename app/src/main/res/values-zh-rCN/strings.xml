@@ -36,6 +36,7 @@
     <string name="recorder_discard_confirm_title">放弃录音？</string>
     <string name="recorder_discard_confirm_message">所有已录制的音频将被永久删除，此操作无法撤销。</string>
     <string name="recorder_saved_message">录音已保存。</string>
+    <string name="recorder_saved_to_app_files_message">录音已保存到应用文件。所选文件夹不可用。</string>
     <string name="recorder_start_failed">无法开始录音。</string>
     <string name="recorder_audio_input_current">录音输入</string>
     <string name="recorder_audio_input_preferred">音频输入设备</string>
@@ -75,10 +76,14 @@
     <string name="sort_shortest">最短</string>
 
     <!-- Player Controls -->
-    <string name="player_skip_back">后退 %1$d 秒</string>
+    <plurals name="player_skip_back">
+        <item quantity="other">后退 %1$d 秒</item>
+    </plurals>
     <string name="player_pause">暂停播放</string>
     <string name="player_play">播放录音</string>
-    <string name="player_skip_forward">快进 %1$d 秒</string>
+    <plurals name="player_skip_forward">
+        <item quantity="other">快进 %1$d 秒</item>
+    </plurals>
     <string name="player_skip_seconds_label">%1$d秒</string>
     <string name="player_toggle_remaining_time">切换总时长和剩余时间</string>
 
@@ -125,25 +130,35 @@
     <string name="settings_file_name_template_preview_label">预览</string>
     <string name="settings_file_name_template_preview">%1$s.%2$s</string>
     <string name="settings_file_name_template_reset">重置</string>
+    <string name="settings_save_location">保存位置</string>
+    <string name="settings_save_location_app_files">应用文件</string>
+    <string name="settings_save_location_device_music">设备存储（Music/SoundMemo）</string>
+    <string name="settings_save_location_app_files_permission_denied">存储权限已被拒绝。新录音将保存到应用文件。</string>
+    <string name="settings_save_location_custom_folder">自定义文件夹</string>
+    <string name="settings_save_location_custom_folder_named">自定义文件夹（%1$s）</string>
+    <string name="settings_storage_internal">内部存储</string>
+    <string name="settings_storage_internal_path">内部存储/%1$s</string>
     <string name="settings_keep_screen_awake">录音时保持屏幕常亮</string>
     <string name="settings_rewind_seconds">默认后退间隔</string>
     <string name="settings_forward_seconds">默认快进间隔</string>
-    <string name="settings_skip_seconds_value">%1$d 秒</string>
+    <plurals name="settings_skip_seconds_value">
+        <item quantity="other">%1$d 秒</item>
+    </plurals>
     <string name="settings_record_location">保存录音位置</string>
     <string name="settings_record_location_desc">将新录音的坐标保存在 SoundMemo 中。</string>
     <string name="settings_write_location_to_media_file">将位置写入音频文件</string>
     <string name="settings_write_location_to_media_file_desc">分享或导出录音时，在支持的音频元数据中包含坐标。</string>
     <string name="settings_local_only">本地优先录音</string>
-    <string name="settings_local_only_desc">SoundMemo 无账号、无广告、无分析，也不会在应用内上传到云端。如果系统设置中启用了 Android 系统备份或设备迁移，应用数据可能会被包含在内。</string>
+    <string name="settings_local_only_desc">SoundMemo 无账号、无广告、无分析，也不会在应用内上传到云端。如果启用了 Android 系统备份或设备迁移，应用偏好设置可能会被包含在内。应用文件中的录音和资料库数据库会被排除；设备存储中的录音会保留在 Music/SoundMemo。</string>
     <string name="privacy_claims_title">隐私摘要</string>
     <string name="privacy_claim_no_account">无需账号</string>
     <string name="privacy_claim_no_account_desc">无需登录即可录音、播放、重命名、分享和删除录音。</string>
     <string name="privacy_claim_no_tracking">无广告或分析</string>
     <string name="privacy_claim_no_tracking_desc">SoundMemo 不包含广告 SDK 或分析跟踪。</string>
     <string name="privacy_claim_no_cloud">不会在应用内上传到云端</string>
-    <string name="privacy_claim_no_cloud_desc">录音会保存在本地应用存储中，除非你选择分享或导出。</string>
+    <string name="privacy_claim_no_cloud_desc">录音会保存在你选择的本地存储位置，除非你选择分享或导出。</string>
     <string name="privacy_claim_system_backup">可能受系统备份影响</string>
-    <string name="privacy_claim_system_backup_desc">如果你在系统设置中启用了 Android 系统备份或设备迁移，应用数据可能会被包含在内。</string>
+    <string name="privacy_claim_system_backup_desc">如果你启用了 Android 系统备份或设备迁移，应用偏好设置可能会被包含在内。应用文件中的录音和资料库数据库会被排除；设备存储中的录音会保留在 Music/SoundMemo。</string>
     <string name="settings_about_app">SoundMemo</string>
     <string name="settings_about_desc">开源 Android 录音机</string>
     <string name="settings_version_code">版本代码：%1$d</string>

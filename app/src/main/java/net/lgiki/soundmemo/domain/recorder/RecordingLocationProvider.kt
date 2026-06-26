@@ -2,7 +2,6 @@ package net.lgiki.soundmemo.domain.recorder
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.annotation.TargetApi
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
@@ -12,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.os.Looper
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executor
 import kotlinx.coroutines.Dispatchers
@@ -49,7 +49,7 @@ object RecordingLocationProvider {
         }.getOrNull()
     }
 
-    @TargetApi(Build.VERSION_CODES.R)
+    @RequiresApi(Build.VERSION_CODES.R)
     @SuppressLint("MissingPermission")
     private suspend fun currentLocationApi30(context: Context, manager: LocationManager, provider: String): Location? =
         suspendCancellableCoroutine { continuation ->
