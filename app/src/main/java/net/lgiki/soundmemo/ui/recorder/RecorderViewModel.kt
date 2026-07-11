@@ -17,8 +17,6 @@ import net.lgiki.soundmemo.data.settings.RecorderVisualization
 import net.lgiki.soundmemo.data.settings.VuMeterValueDisplay
 import net.lgiki.soundmemo.domain.recorder.AudioInputDevice
 import net.lgiki.soundmemo.domain.recorder.AudioInputPreference
-import net.lgiki.soundmemo.domain.recorder.RecordingLocation
-import net.lgiki.soundmemo.domain.recorder.RecordingLocationProvider
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.RecorderUiState
 import net.lgiki.soundmemo.domain.recorder.RecordingStateHolder
@@ -44,20 +42,19 @@ class RecorderViewModel(
             container.audioInputDeviceRepository.currentDevices(),
         )
 
-    fun start(context: Context, location: RecordingLocation? = null) {
-        ContextCompat.startForegroundService(context, RecordingService.startIntent(context, RecordingService.ACTION_START, location))
+    fun start(context: Context, recordLocation: Boolean) {
+        ContextCompat.startForegroundService(
+            context,
+            RecordingService.startIntent(
+                context,
+                RecordingService.ACTION_START,
+                recordLocation = recordLocation,
+            ),
+        )
     }
 
     fun startWithOptionalLocation(context: Context, recordLocation: Boolean) {
-        val appContext = context.applicationContext
-        viewModelScope.launch {
-            val location = if (recordLocation) {
-                RecordingLocationProvider.currentLocation(appContext)
-            } else {
-                null
-            }
-            start(appContext, location)
-        }
+        start(context.applicationContext, recordLocation)
     }
 
     fun pause(context: Context) {

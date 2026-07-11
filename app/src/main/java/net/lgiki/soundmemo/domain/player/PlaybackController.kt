@@ -8,11 +8,13 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.lgiki.soundmemo.data.model.Recording
 import net.lgiki.soundmemo.data.settings.SettingsRepository
@@ -27,6 +29,7 @@ class PlaybackController(
     private val scopeJob = SupervisorJob()
     private val scope = CoroutineScope(scopeJob + Dispatchers.Main.immediate)
     private val player = ExoPlayer.Builder(appContext).build()
+    private var progressJob: Job? = null
     private val mutableState = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = mutableState.asStateFlow()
 
@@ -35,6 +38,13 @@ class PlaybackController(
             object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     mutableState.value = mutableState.value.copy(isPlaying = isPlaying)
+                    if (isPlaying) {
+                        startProgressUpdates()
+                    } else {
+                        progressJob?.cancel()
+                        progressJob = null
+                        updateProgress()
+                    }
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -46,16 +56,6 @@ class PlaybackController(
                 }
             },
         )
-        scope.launch {
-            while (true) {
-                mutableState.value = mutableState.value.copy(
-                    positionMs = player.currentPosition.coerceAtLeast(0L),
-                    durationMs = player.duration.coerceAtLeast(0L),
-                    isPlaying = player.isPlaying,
-                )
-                delay(500)
-            }
-        }
         scope.launch {
             settingsRepository.settings.collect { settings ->
                 applySpeed(settings.playbackSpeed)
@@ -88,6 +88,7 @@ class PlaybackController(
 
     fun seekTo(positionMs: Long) {
         player.seekTo(positionMs.coerceAtLeast(0L))
+        updateProgress()
     }
 
     fun skipBy(deltaMs: Long) {
@@ -108,13 +109,37 @@ class PlaybackController(
     }
 
     fun release() {
+        progressJob?.cancel()
         scopeJob.cancel()
         player.release()
+    }
+
+    private fun startProgressUpdates() {
+        progressJob?.cancel()
+        progressJob = scope.launch {
+            while (isActive && player.isPlaying) {
+                updateProgress()
+                delay(PROGRESS_UPDATE_INTERVAL_MS)
+            }
+            if (isActive) updateProgress()
+        }
+    }
+
+    private fun updateProgress() {
+        mutableState.value = mutableState.value.copy(
+            positionMs = player.currentPosition.coerceAtLeast(0L),
+            durationMs = player.duration.coerceAtLeast(0L),
+            isPlaying = player.isPlaying,
+        )
     }
 
     private fun applySpeed(speed: Float) {
         val coerced = speed.coerceIn(0.5f, 2f)
         player.playbackParameters = PlaybackParameters(coerced)
         mutableState.value = mutableState.value.copy(speed = coerced)
+    }
+
+    private companion object {
+        const val PROGRESS_UPDATE_INTERVAL_MS = 500L
     }
 }

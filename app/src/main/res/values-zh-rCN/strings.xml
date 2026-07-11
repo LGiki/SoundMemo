@@ -198,6 +198,7 @@
     <string name="notification_title">SoundMemo 正在录音</string>
     <string name="notification_text_paused">%1$s · 已暂停</string>
     <string name="notification_text_recording">%1$s</string>
+    <string name="notification_text_starting">正在开始录音…</string>
     <string name="notification_action_resume">继续</string>
     <string name="notification_action_pause">暂停</string>
     <string name="notification_action_stop">停止</string>

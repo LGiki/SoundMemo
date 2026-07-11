@@ -38,6 +38,19 @@ object RecordingLocationProvider {
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
+    fun canCaptureLocation(context: Context): Boolean {
+        val appContext = context.applicationContext
+        if (!hasLocationPermission(appContext)) return false
+        val manager = appContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return false
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            manager.isLocationEnabled
+        } else {
+            permittedProviders(appContext).any { provider ->
+                runCatching { manager.isProviderEnabled(provider) }.getOrDefault(false)
+            }
+        }
+    }
+
     private suspend fun currentLocation(context: Context, manager: LocationManager): RecordingLocation? {
         val provider = preferredProvider(context, manager) ?: return null
         return runCatching {

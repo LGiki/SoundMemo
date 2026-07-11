@@ -33,6 +33,7 @@ import net.lgiki.soundmemo.data.storage.GeneratedRecordingName
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 import net.lgiki.soundmemo.domain.recorder.RecordingLocation
+import net.lgiki.soundmemo.domain.recorder.RecordingLocationProvider
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.RecorderUiState
 import net.lgiki.soundmemo.domain.recorder.RecordingStateHolder
@@ -55,6 +56,7 @@ class RecordingService : LifecycleService() {
     private var recordingLocation: RecordingLocation? = null
     private var isStarting = false
     private var isStopping = false
+    private var pendingStopSave: Boolean? = null
     private var startedAt = 0L
     private var pausedAt = 0L
     private var pausedTotal = 0L
@@ -76,7 +78,7 @@ class RecordingService : LifecycleService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         when (intent?.action) {
-            ACTION_START -> startRecording(intent.recordingLocationExtra())
+            ACTION_START -> startRecording(intent.getBooleanExtra(EXTRA_RECORD_LOCATION, false))
             ACTION_PAUSE -> pauseRecording()
             ACTION_RESUME -> resumeRecording()
             ACTION_STOP -> stopRecording(
@@ -93,10 +95,44 @@ class RecordingService : LifecycleService() {
         return null
     }
 
-    private fun startRecording(location: RecordingLocation?) {
+    private fun startRecording(recordLocation: Boolean) {
         if (recorder != null || isStarting || isStopping) return
         isStarting = true
+        val captureLocation = recordLocation && RecordingLocationProvider.canCaptureLocation(this)
+        val foregroundStartFailure = runCatching {
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                buildStartingNotification(),
+                foregroundServiceType(captureLocation),
+            )
+        }.exceptionOrNull()
+        if (foregroundStartFailure != null) {
+            isStarting = false
+            RecordingStateHolder.update(
+                RecorderUiState(
+                    status = RecorderStatus.Error,
+                    message = foregroundStartFailure.localizedMessage ?: getString(R.string.recorder_start_failed),
+                ),
+            )
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return
+        }
         lifecycleScope.launch {
+            val location = if (captureLocation) {
+                RecordingLocationProvider.currentLocation(this@RecordingService)
+            } else {
+                null
+            }
+            if (pendingStopSave != null) {
+                pendingStopSave = null
+                isStarting = false
+                RecordingStateHolder.update(RecorderUiState(status = RecorderStatus.Idle))
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return@launch
+            }
             var recordingBackend: AudioRecordingBackend? = null
             var file: File? = null
             var started = false
@@ -162,12 +198,6 @@ class RecordingService : LifecycleService() {
                         actualAudioInput = createdRecorder.routedDevice,
                     ),
                 )
-                ServiceCompat.startForeground(
-                    this@RecordingService,
-                    NOTIFICATION_ID,
-                    buildNotification(RecorderStatus.Recording, 0L),
-                    foregroundServiceType(),
-                )
                 startTicker()
             }.onFailure {
                 if (it is CancellationException) throw it
@@ -182,9 +212,14 @@ class RecordingService : LifecycleService() {
                         message = it.localizedMessage ?: getString(R.string.recorder_start_failed),
                     ),
                 )
+                stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }.also {
                 isStarting = false
+                pendingStopSave?.let { save ->
+                    pendingStopSave = null
+                    stopRecording(save)
+                }
             }
         }
     }
@@ -193,11 +228,13 @@ class RecordingService : LifecycleService() {
         if (isStarting || isStopping) return
         val activeRecorder = recorder ?: return
         if (RecordingStateHolder.state.value.status != RecorderStatus.Recording) return
-        runCatching {
+        try {
             activeRecorder.pause()
             pausedAt = SystemClock.elapsedRealtime()
             RecordingStateHolder.update(RecordingStateHolder.state.value.copy(status = RecorderStatus.Paused, amplitude = 0))
             notifyStatus(RecorderStatus.Paused)
+        } catch (exception: Exception) {
+            failRecording(exception)
         }
     }
 
@@ -205,18 +242,38 @@ class RecordingService : LifecycleService() {
         if (isStarting || isStopping) return
         val activeRecorder = recorder ?: return
         if (RecordingStateHolder.state.value.status != RecorderStatus.Paused) return
-        runCatching {
+        try {
             activeRecorder.resume()
             pausedTotal += SystemClock.elapsedRealtime() - pausedAt
             pausedAt = 0L
             RecordingStateHolder.update(RecordingStateHolder.state.value.copy(status = RecorderStatus.Recording))
             notifyStatus(RecorderStatus.Recording)
+        } catch (exception: Exception) {
+            failRecording(exception)
         }
+    }
+
+    private fun failRecording(exception: Exception) {
+        val file = outputFile
+        ticker?.cancel()
+        cleanupRecorder()
+        file?.delete()
+        RecordingStateHolder.update(
+            RecorderUiState(
+                status = RecorderStatus.Error,
+                message = exception.localizedMessage ?: getString(R.string.recorder_start_failed),
+            ),
+        )
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     private fun stopRecording(save: Boolean, fromNotification: Boolean = false) {
         if (isStopping) return
-        if (isStarting) return
+        if (isStarting) {
+            pendingStopSave = save
+            return
+        }
         val activeRecorder = recorder ?: return stopSelf()
         isStopping = true
         RecordingStateHolder.update(RecordingStateHolder.state.value.copy(status = RecorderStatus.Saving, amplitude = 0))
@@ -355,6 +412,7 @@ class RecordingService : LifecycleService() {
         outputSampleRate = 0
         recordingLocation = null
         isStarting = false
+        pendingStopSave = null
         startedAt = 0L
         pausedAt = 0L
         pausedTotal = 0L
@@ -454,9 +512,26 @@ class RecordingService : LifecycleService() {
             .build()
     }
 
-    private fun foregroundServiceType(): Int =
+    private fun buildStartingNotification(): Notification {
+        val openIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(getString(R.string.notification_title))
+            .setContentText(getString(R.string.notification_text_starting))
+            .setOngoing(true)
+            .setContentIntent(openIntent)
+            .build()
+    }
+
+    private fun foregroundServiceType(recordLocation: Boolean): Int =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
+                if (recordLocation) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0
         } else {
             0
         }
@@ -485,29 +560,11 @@ class RecordingService : LifecycleService() {
         const val ACTION_STOP = "net.lgiki.soundmemo.STOP_RECORDING"
         const val ACTION_CANCEL = "net.lgiki.soundmemo.CANCEL_RECORDING"
         private const val EXTRA_FROM_NOTIFICATION = "net.lgiki.soundmemo.extra.FROM_NOTIFICATION"
-        private const val EXTRA_LOCATION_LATITUDE = "net.lgiki.soundmemo.extra.LOCATION_LATITUDE"
-        private const val EXTRA_LOCATION_LONGITUDE = "net.lgiki.soundmemo.extra.LOCATION_LONGITUDE"
-        private const val EXTRA_LOCATION_ACCURACY = "net.lgiki.soundmemo.extra.LOCATION_ACCURACY"
-        private const val EXTRA_LOCATION_CAPTURED_AT = "net.lgiki.soundmemo.extra.LOCATION_CAPTURED_AT"
+        private const val EXTRA_RECORD_LOCATION = "net.lgiki.soundmemo.extra.RECORD_LOCATION"
 
-        fun startIntent(context: Context, action: String, location: RecordingLocation? = null): Intent =
+        fun startIntent(context: Context, action: String, recordLocation: Boolean = false): Intent =
             Intent(context, RecordingService::class.java).setAction(action).apply {
-                if (location != null) {
-                    putExtra(EXTRA_LOCATION_LATITUDE, location.latitude)
-                    putExtra(EXTRA_LOCATION_LONGITUDE, location.longitude)
-                    location.accuracyMeters?.let { putExtra(EXTRA_LOCATION_ACCURACY, it) }
-                    putExtra(EXTRA_LOCATION_CAPTURED_AT, location.capturedAt)
-                }
+                putExtra(EXTRA_RECORD_LOCATION, recordLocation)
             }
-
-        private fun Intent.recordingLocationExtra(): RecordingLocation? {
-            if (!hasExtra(EXTRA_LOCATION_LATITUDE) || !hasExtra(EXTRA_LOCATION_LONGITUDE)) return null
-            return RecordingLocation(
-                latitude = getDoubleExtra(EXTRA_LOCATION_LATITUDE, 0.0),
-                longitude = getDoubleExtra(EXTRA_LOCATION_LONGITUDE, 0.0),
-                accuracyMeters = if (hasExtra(EXTRA_LOCATION_ACCURACY)) getFloatExtra(EXTRA_LOCATION_ACCURACY, 0f) else null,
-                capturedAt = getLongExtra(EXTRA_LOCATION_CAPTURED_AT, System.currentTimeMillis()),
-            )
-        }
     }
 }
