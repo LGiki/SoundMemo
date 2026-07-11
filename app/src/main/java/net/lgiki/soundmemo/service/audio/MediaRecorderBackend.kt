@@ -40,6 +40,8 @@ internal class MediaRecorderBackend(
             null
         }
 
+    override val failure: Throwable? = null
+
     override fun start() {
         recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

@@ -22,6 +22,7 @@ import androidx.lifecycle.lifecycleScope
 import java.io.File
 import kotlin.math.sqrt
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -54,8 +55,8 @@ class RecordingService : LifecycleService() {
     private var outputBitrate: Int = 0
     private var outputSampleRate: Int = 0
     private var recordingLocation: RecordingLocation? = null
-    private var isStarting = false
-    private var isStopping = false
+    @Volatile private var isStarting = false
+    @Volatile private var isStopping = false
     private var pendingStopSave: Boolean? = null
     private var startedAt = 0L
     private var pausedAt = 0L
@@ -278,7 +279,7 @@ class RecordingService : LifecycleService() {
         isStopping = true
         RecordingStateHolder.update(RecordingStateHolder.state.value.copy(status = RecorderStatus.Saving, amplitude = 0))
         ticker?.cancel()
-        lifecycleScope.launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             val file = outputFile
             val generatedName = outputGeneratedName
             val displayName = outputDisplayName
@@ -356,6 +357,10 @@ class RecordingService : LifecycleService() {
             while (true) {
                 val current = RecordingStateHolder.state.value
                 val status = current.status
+                recorder?.failure?.let { failure ->
+                    failRecording(failure as? Exception ?: RuntimeException(failure))
+                    return@launch
+                }
                 val elapsedMs = currentElapsed()
                 val amplitude = if (status == RecorderStatus.Recording) runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0) else 0
                 val refreshRoute = current.actualAudioInput == null || routeRefreshTick++ % ROUTE_REFRESH_TICKS == 0

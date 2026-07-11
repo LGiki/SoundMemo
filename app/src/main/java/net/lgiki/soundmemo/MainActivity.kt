@@ -55,8 +55,11 @@ import net.lgiki.soundmemo.ui.theme.shouldUseDarkTheme
 import net.lgiki.soundmemo.util.wrapWithLocale
 
 class MainActivity : ComponentActivity() {
+    private var attachedLocale: String = "system"
+
     override fun attachBaseContext(newBase: Context) {
         val app = newBase.applicationContext as SoundMemoApplication
+        attachedLocale = app.currentLocale
         super.attachBaseContext(newBase.wrapWithLocale(app.currentLocale))
     }
 
@@ -111,14 +114,11 @@ class MainActivity : ComponentActivity() {
                     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
             }
-            LaunchedEffect(Unit) {
-                settingsViewModel.localeChanged.collect { tag ->
-                    if (tag != null) {
-                        val app = application as SoundMemoApplication
-                        app.updateLocale(tag)
-                        settingsViewModel.consumeLocaleChange()
-                        recreate()
-                    }
+            LaunchedEffect(settings.locale) {
+                val app = application as SoundMemoApplication
+                if (attachedLocale != settings.locale) {
+                    app.updateLocale(settings.locale)
+                    recreate()
                 }
             }
             SoundMemoTheme(settings = settings) {

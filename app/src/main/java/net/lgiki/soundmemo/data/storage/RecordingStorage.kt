@@ -255,11 +255,21 @@ class RecordingStorage(private val context: Context) {
 
     private fun File.moveTo(destination: File) {
         destination.parentFile?.mkdirs()
+        check(!destination.exists()) { "Recording destination already exists: ${destination.absolutePath}" }
         if (!renameTo(destination)) {
-            inputStream().use { input ->
-                destination.outputStream().use { output -> input.copyTo(output) }
+            val staging = File(destination.parentFile, ".${destination.name}.${UUID.randomUUID()}.pending")
+            try {
+                inputStream().use { input ->
+                    staging.outputStream().use { output -> input.copyTo(output) }
+                }
+                check(staging.renameTo(destination)) {
+                    "Could not finalize recording at ${destination.absolutePath}"
+                }
+                check(delete()) { "Could not remove temporary recording: $absolutePath" }
+            } catch (exception: Exception) {
+                staging.delete()
+                throw exception
             }
-            delete()
         }
     }
 }

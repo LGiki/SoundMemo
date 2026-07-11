@@ -2,22 +2,25 @@ package net.lgiki.soundmemo
 
 import android.app.Application
 import android.content.res.Configuration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import net.lgiki.soundmemo.util.resolveLocale
 
 class SoundMemoApplication : Application() {
     val container by lazy { SoundMemoContainer(this) }
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     var currentLocale: String = "system"
         private set
 
     override fun onCreate() {
         super.onCreate()
-        currentLocale = runBlocking {
-            container.settingsRepository.settings.first().locale
+        applicationScope.launch {
+            updateLocale(container.settingsRepository.settings.first().locale)
         }
-        applyLocale(currentLocale)
     }
 
     fun updateLocale(tag: String) {

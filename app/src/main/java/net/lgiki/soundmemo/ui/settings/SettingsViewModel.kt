@@ -48,9 +48,6 @@ class SettingsViewModel(
         audioInputDeviceRepository.currentDevices(),
     )
 
-    private val _localeChanged = MutableStateFlow<String?>(null)
-    val localeChanged: StateFlow<String?> = _localeChanged.asStateFlow()
-
     init {
         viewModelScope.launch {
             val options = withContext(Dispatchers.Default) {
@@ -102,17 +99,5 @@ class SettingsViewModel(
     fun setRewindSeconds(seconds: Int) = viewModelScope.launch { repository.setRewindSeconds(seconds) }
     fun setForwardSeconds(seconds: Int) = viewModelScope.launch { repository.setForwardSeconds(seconds) }
 
-    fun setLocale(tag: String) {
-        if (settings.value.locale == tag) return
-        viewModelScope.launch {
-            repository.setLocale(tag)
-            _localeChanged.value = tag
-        }
-    }
-
-    fun consumeLocaleChange(): String? {
-        val tag = _localeChanged.value
-        if (tag != null) _localeChanged.value = null
-        return tag
-    }
+    fun setLocale(tag: String) = viewModelScope.launch { repository.setLocale(tag) }
 }

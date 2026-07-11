@@ -38,7 +38,7 @@ internal class PcmRecordingBackend(
     )
     private var audioRecord: AudioRecord? = null
     private val amplitude = AtomicInteger(0)
-    private val failure = AtomicReference<Throwable?>(null)
+    private val recordingFailure = AtomicReference<Throwable?>(null)
     @Volatile private var running = false
     @Volatile private var paused = false
     @Volatile private var released = false
@@ -54,6 +54,9 @@ internal class PcmRecordingBackend(
         } else {
             null
         }
+
+    override val failure: Throwable?
+        get() = recordingFailure.get()
 
     override fun start() {
         val activeAudioRecord = createAudioRecord().also { audioRecord = it }
@@ -87,8 +90,8 @@ internal class PcmRecordingBackend(
         val activeWriter = writer
         writer = null
         val closeFailure = runCatching { activeWriter?.close() }.exceptionOrNull()
-        val recordingFailure = failure.get()
-        recordingFailure?.let { throw it }
+        val failure = recordingFailure.get()
+        failure?.let { throw it }
         closeFailure?.let { throw it }
     }
 
@@ -124,7 +127,11 @@ internal class PcmRecordingBackend(
                     continue
                 }
                 val read = audioRecord?.read(samples, 0, samples.size) ?: break
-                if (read <= 0) continue
+                check(read >= 0) { "AudioRecord read failed: $read" }
+                if (read == 0) {
+                    Thread.sleep(EMPTY_READ_SLEEP_MS)
+                    continue
+                }
                 if (paused) {
                     amplitude.set(0)
                     continue
@@ -139,7 +146,7 @@ internal class PcmRecordingBackend(
                 }
             }
         } catch (throwable: Throwable) {
-            failure.compareAndSet(null, throwable)
+            recordingFailure.compareAndSet(null, throwable)
             running = false
         }
     }
@@ -208,5 +215,6 @@ internal class PcmRecordingBackend(
 
     private companion object {
         private const val PAUSED_READ_SLEEP_MS = 50L
+        private const val EMPTY_READ_SLEEP_MS = 10L
     }
 }

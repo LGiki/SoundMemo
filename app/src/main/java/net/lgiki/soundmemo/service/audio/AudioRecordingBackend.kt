@@ -5,6 +5,7 @@ import net.lgiki.soundmemo.domain.recorder.AudioInputRoute
 internal interface AudioRecordingBackend {
     val maxAmplitude: Int
     val routedDevice: AudioInputRoute?
+    val failure: Throwable?
 
     fun start()
     fun pause()
