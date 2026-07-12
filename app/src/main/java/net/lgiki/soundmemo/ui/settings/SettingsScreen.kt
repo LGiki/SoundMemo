@@ -380,7 +380,7 @@ fun SettingsScreen(
                     PreferenceDivider()
                     PreferenceRow(
                         leadingIcon = Icons.Default.Security,
-                        headline = stringResource(R.string.settings_local_only),
+                        headline = stringResource(R.string.settings_privacy),
                         supporting = stringResource(R.string.settings_privacy_desc),
                         onClick = onPrivacyClick,
                         trailing = {
