@@ -1,0 +1,31 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Themed icons are single-color: preserve the recorder's primary silhouette. -->
+    <group
+        android:scaleX="0.5148"
+        android:scaleY="0.5148"
+        android:translateX="29.112"
+        android:translateY="29.112">
+        <path
+            android:fillColor="#FF000000"
+            android:fillType="evenOdd"
+            android:pathData="M20,5L100,5A15,15 0,0 1,115 20L115,100A15,15 0,0 1,100 115L20,115A15,15 0,0 1,5 100L5,20A15,15 0,0 1,20 5zM21,15L99,15A6,6 0,0 1,105 21L105,74A6,6 0,0 1,99 80L21,80A6,6 0,0 1,15 74L15,21A6,6 0,0 1,21 15zM24,87L24,101L38,94zM52,87L58,87L58,101L52,101zM62,87L68,87L68,101L62,101zM82,87L98,87L98,101L82,101z" />
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M60,22L60,22A10,10 0,0 1,70 32L70,44A10,10 0,0 1,60 54L60,54A10,10 0,0 1,50 44L50,32A10,10 0,0 1,60 22z" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M45,42A15,15 0,0 0,75 42"
+            android:strokeColor="#FF000000"
+            android:strokeWidth="4" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M60,57L60,68M48,68L72,68"
+            android:strokeColor="#FF000000"
+            android:strokeWidth="5"
+            android:strokeLineCap="round" />
+    </group>
+</vector>
