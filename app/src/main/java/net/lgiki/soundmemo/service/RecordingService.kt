@@ -24,14 +24,17 @@ import kotlin.math.sqrt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.lgiki.soundmemo.MainActivity
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.SoundMemoApplication
 import net.lgiki.soundmemo.data.storage.GeneratedRecordingName
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
+import net.lgiki.soundmemo.data.storage.RecordingSaveResult
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 import net.lgiki.soundmemo.domain.recorder.RecordingLocation
 import net.lgiki.soundmemo.domain.recorder.RecordingLocationProvider
@@ -56,7 +59,7 @@ class RecordingService : LifecycleService() {
     private var outputSampleRate: Int = 0
     private var recordingLocation: RecordingLocation? = null
     @Volatile private var isStarting = false
-    @Volatile private var isStopping = false
+    private val teardownGate = RecordingTeardownGate()
     private var pendingStopSave: Boolean? = null
     private var startedAt = 0L
     private var pausedAt = 0L
@@ -97,7 +100,7 @@ class RecordingService : LifecycleService() {
     }
 
     private fun startRecording(recordLocation: Boolean) {
-        if (recorder != null || isStarting || isStopping) return
+        if (recorder != null || isStarting || teardownGate.isClaimed()) return
         isStarting = true
         val captureLocation = recordLocation && RecordingLocationProvider.canCaptureLocation(this)
         val foregroundStartFailure = runCatching {
@@ -202,19 +205,7 @@ class RecordingService : LifecycleService() {
                 startTicker()
             }.onFailure {
                 if (it is CancellationException) throw it
-                if (started) {
-                    runCatching { recordingBackend?.stop() }
-                }
-                cleanupRecorder()
-                file?.delete()
-                RecordingStateHolder.update(
-                    RecorderUiState(
-                        status = RecorderStatus.Error,
-                        message = it.localizedMessage ?: getString(R.string.recorder_start_failed),
-                    ),
-                )
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                handleStartFailure(it, started, recordingBackend, file)
             }.also {
                 isStarting = false
                 pendingStopSave?.let { save ->
@@ -226,7 +217,7 @@ class RecordingService : LifecycleService() {
     }
 
     private fun pauseRecording() {
-        if (isStarting || isStopping) return
+        if (isStarting || teardownGate.isClaimed()) return
         val activeRecorder = recorder ?: return
         if (RecordingStateHolder.state.value.status != RecorderStatus.Recording) return
         try {
@@ -240,7 +231,7 @@ class RecordingService : LifecycleService() {
     }
 
     private fun resumeRecording() {
-        if (isStarting || isStopping) return
+        if (isStarting || teardownGate.isClaimed()) return
         val activeRecorder = recorder ?: return
         if (RecordingStateHolder.state.value.status != RecorderStatus.Paused) return
         try {
@@ -255,96 +246,144 @@ class RecordingService : LifecycleService() {
     }
 
     private fun failRecording(exception: Exception) {
+        if (RecordingStateHolder.state.value.status == RecorderStatus.Saving || !teardownGate.tryClaim()) return
         val file = outputFile
         ticker?.cancel()
-        cleanupRecorder()
-        file?.delete()
-        RecordingStateHolder.update(
-            RecorderUiState(
-                status = RecorderStatus.Error,
-                message = exception.localizedMessage ?: getString(R.string.recorder_start_failed),
-            ),
-        )
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        lifecycleScope.launch(Dispatchers.IO) {
+            withContext(NonCancellable) {
+                finishFailedRecording(exception, file)
+            }
+        }
+    }
+
+    private fun handleStartFailure(
+        exception: Throwable,
+        started: Boolean,
+        recordingBackend: AudioRecordingBackend?,
+        file: File?,
+    ) {
+        if (!teardownGate.tryClaim()) return
+        ticker?.cancel()
+        lifecycleScope.launch(Dispatchers.IO) {
+            withContext(NonCancellable) {
+                try {
+                    if (started) {
+                        runCatching { recordingBackend?.stop() }
+                    }
+                    finishFailedRecording(exception, file, releaseTeardownGate = false)
+                } finally {
+                    teardownGate.release()
+                    stopSelf()
+                }
+            }
+        }
+    }
+
+    private fun finishFailedRecording(
+        exception: Throwable,
+        file: File?,
+        releaseTeardownGate: Boolean = true,
+    ) {
+        try {
+            cleanupRecorder()
+            file?.delete()
+            RecordingStateHolder.update(
+                RecorderUiState(
+                    status = RecorderStatus.Error,
+                    message = exception.localizedMessage ?: getString(R.string.recorder_start_failed),
+                ),
+            )
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } finally {
+            if (releaseTeardownGate) {
+                teardownGate.release()
+                stopSelf()
+            }
+        }
     }
 
     private fun stopRecording(save: Boolean, fromNotification: Boolean = false) {
-        if (isStopping) return
         if (isStarting) {
             pendingStopSave = save
             return
         }
-        val activeRecorder = recorder ?: return stopSelf()
-        isStopping = true
+        if (!teardownGate.tryClaim()) return
+        val activeRecorder = recorder ?: run {
+            teardownGate.release()
+            stopSelf()
+            return
+        }
         RecordingStateHolder.update(RecordingStateHolder.state.value.copy(status = RecorderStatus.Saving, amplitude = 0))
         ticker?.cancel()
         lifecycleScope.launch(Dispatchers.IO) {
-            val file = outputFile
-            val generatedName = outputGeneratedName
-            val displayName = outputDisplayName
-            val activeFormat = outputFormat
-            val activeBitrate = outputBitrate
-            val activeSampleRate = outputSampleRate
-            val elapsed = currentElapsed()
-            val location = recordingLocation
-            var savedConfirmationMessage: String? = null
-            try {
-                activeRecorder.stop()
-                cleanupRecorder()
-                if (save && file != null && generatedName != null && file.exists() && file.length() > 0) {
-                    val settings = container.settingsRepository.settings.first()
-                    val recordingFormat = activeFormat ?: settings.recordingFormat
-                    val saveResult = container.recordingStorage.publishRecording(
-                        tempFile = file,
-                        generatedName = generatedName,
-                        location = settings.recordingStorageLocation,
-                        format = recordingFormat.storageValue,
-                        customFolderUri = settings.customRecordingFolderUri,
-                    )
-                    val id = container.recordingRepository.addFromSaveResult(
-                        saveResult = saveResult,
-                        name = displayName.orEmpty(),
-                        durationMs = elapsed,
-                        bitrate = activeBitrate.takeIf { it > 0 } ?: recordingFormat.bitrateFor(settings.bitrate),
-                        sampleRate = activeSampleRate.takeIf { it > 0 } ?: recordingFormat.sampleRateFor(settings.sampleRate),
-                        format = recordingFormat.storageValue,
-                        location = location,
-                    )
-                    val savedMessage = if (saveResult.fellBackToAppFiles) {
-                        getString(R.string.recorder_saved_to_app_files_message)
+            withContext(NonCancellable) {
+                val file = outputFile
+                val generatedName = outputGeneratedName
+                val displayName = outputDisplayName
+                val activeFormat = outputFormat
+                val activeBitrate = outputBitrate
+                val activeSampleRate = outputSampleRate
+                val elapsed = currentElapsed()
+                val location = recordingLocation
+                var saveResult: RecordingSaveResult? = null
+                var savedConfirmationMessage: String? = null
+                try {
+                    activeRecorder.stop()
+                    cleanupRecorder()
+                    if (save && file != null && generatedName != null && file.exists() && file.length() > 0) {
+                        val settings = container.settingsRepository.settings.first()
+                        val recordingFormat = activeFormat ?: settings.recordingFormat
+                        saveResult = container.recordingStorage.publishRecording(
+                            tempFile = file,
+                            generatedName = generatedName,
+                            location = settings.recordingStorageLocation,
+                            format = recordingFormat.storageValue,
+                            customFolderUri = settings.customRecordingFolderUri,
+                        )
+                        val id = container.recordingRepository.addFromSaveResult(
+                            saveResult = requireNotNull(saveResult),
+                            name = displayName.orEmpty(),
+                            durationMs = elapsed,
+                            bitrate = activeBitrate.takeIf { it > 0 } ?: recordingFormat.bitrateFor(settings.bitrate),
+                            sampleRate = activeSampleRate.takeIf { it > 0 } ?: recordingFormat.sampleRateFor(settings.sampleRate),
+                            format = recordingFormat.storageValue,
+                            location = location,
+                        )
+                        val savedMessage = if (saveResult.fellBackToAppFiles) {
+                            getString(R.string.recorder_saved_to_app_files_message)
+                        } else {
+                            getString(R.string.recorder_saved_message)
+                        }
+                        RecordingStateHolder.update(
+                            RecorderUiState(
+                                status = RecorderStatus.Saved,
+                                lastSavedId = id,
+                                message = if (fromNotification) null else savedMessage,
+                            ),
+                        )
+                        if (fromNotification) {
+                            savedConfirmationMessage = savedMessage
+                        }
                     } else {
-                        getString(R.string.recorder_saved_message)
+                        file?.delete()
+                        RecordingStateHolder.update(RecorderUiState(status = RecorderStatus.Idle))
                     }
+                } catch (exception: Exception) {
+                    cleanupRecorder()
+                    saveResult?.let { container.recordingStorage.deletePublishedRecording(it) }
+                    file?.delete()
                     RecordingStateHolder.update(
                         RecorderUiState(
-                            status = RecorderStatus.Saved,
-                            lastSavedId = id,
-                            message = if (fromNotification) null else savedMessage,
+                            status = RecorderStatus.Error,
+                            message = exception.localizedMessage ?: getString(R.string.recorder_start_failed),
                         ),
                     )
-                    if (fromNotification) {
-                        savedConfirmationMessage = savedMessage
-                    }
-                } else {
-                    file?.delete()
-                    RecordingStateHolder.update(RecorderUiState(status = RecorderStatus.Idle))
+                } finally {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    savedConfirmationMessage?.let(::showSavedConfirmationNotification)
+                    teardownGate.release()
+                    stopSelf()
                 }
-            } catch (exception: Exception) {
-                if (exception is CancellationException) throw exception
-                cleanupRecorder()
-                file?.delete()
-                RecordingStateHolder.update(
-                    RecorderUiState(
-                        status = RecorderStatus.Error,
-                        message = exception.localizedMessage ?: getString(R.string.recorder_start_failed),
-                    ),
-                )
-            } finally {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                savedConfirmationMessage?.let(::showSavedConfirmationNotification)
-                isStopping = false
-                stopSelf()
             }
         }
     }

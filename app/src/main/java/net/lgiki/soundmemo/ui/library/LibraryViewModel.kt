@@ -1,6 +1,7 @@
 package net.lgiki.soundmemo.ui.library
 
 import android.content.Context
+import android.content.ClipData
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -97,6 +98,7 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = shareMimeType(recording.format)
             putExtra(Intent.EXTRA_STREAM, uri)
+            clipData = ClipData.newRawUri(null, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, context.getString(R.string.share_title)))

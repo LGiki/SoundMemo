@@ -12,8 +12,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
-import kotlin.math.abs
 import kotlin.math.max
 import net.lgiki.soundmemo.domain.recorder.AudioInputRoute
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
@@ -38,12 +36,9 @@ internal class PcmRecordingBackend(
     )
     private var audioRecord: AudioRecord? = null
     private val amplitude = AtomicInteger(0)
-    private val recordingFailure = AtomicReference<Throwable?>(null)
-    @Volatile private var running = false
-    @Volatile private var paused = false
     @Volatile private var released = false
     private var writer: PcmAudioWriter? = null
-    private var worker: Thread? = null
+    private var captureWorker: PcmCaptureWorker? = null
 
     override val maxAmplitude: Int
         get() = amplitude.getAndSet(0)
@@ -56,7 +51,7 @@ internal class PcmRecordingBackend(
         }
 
     override val failure: Throwable?
-        get() = recordingFailure.get()
+        get() = captureWorker?.failure
 
     override fun start() {
         val activeAudioRecord = createAudioRecord().also { audioRecord = it }
@@ -67,30 +62,37 @@ internal class PcmRecordingBackend(
             RecordingFormat.Mp3 -> Mp3AudioWriter(file, sampleRate, bitrate, channels.channelCount)
             else -> error("PCM recorder does not support $format")
         }
-        running = true
         activeAudioRecord.startRecording()
-        worker = Thread(::recordLoop, "SoundMemoPcmRecorder").apply { start() }
+        captureWorker = PcmCaptureWorker(
+            bufferSize = bufferSize,
+            read = { samples -> audioRecord?.read(samples, 0, samples.size) ?: ERROR_STOPPED },
+            write = { samples, sampleCount -> writer?.write(samples, sampleCount) },
+            closeOutput = {
+                val activeWriter = writer
+                writer = null
+                activeWriter?.close()
+            },
+            onAmplitude = { measured -> amplitude.updateAndGet { current -> max(current, measured) } },
+        ).also { it.start() }
     }
 
     override fun pause() {
-        paused = true
+        captureWorker?.pause()
         runCatching { audioRecord?.stop() }
         amplitude.set(0)
     }
 
     override fun resume() {
         audioRecord?.startRecording()
-        paused = false
+        captureWorker?.resume()
     }
 
     override fun stop() {
-        running = false
+        captureWorker?.requestStop()
         runCatching { audioRecord?.stop() }
-        worker?.join()
-        val activeWriter = writer
-        writer = null
-        val closeFailure = runCatching { activeWriter?.close() }.exceptionOrNull()
-        val failure = recordingFailure.get()
+        val activeWorker = captureWorker
+        val closeFailure = runCatching { activeWorker?.stopAndJoin() }.exceptionOrNull()
+        val failure = activeWorker?.failure
         failure?.let { throw it }
         closeFailure?.let { throw it }
     }
@@ -98,11 +100,36 @@ internal class PcmRecordingBackend(
     override fun release() {
         if (released) return
         released = true
-        running = false
-        runCatching { audioRecord?.release() }
+        val activeWorker = captureWorker
+        val activeAudioRecord = audioRecord
+        activeWorker?.requestStop()
+        runCatching { activeAudioRecord?.stop() }
+        val workerStopped = activeWorker?.let { worker ->
+            runCatching { worker.stopAndJoin(WORKER_JOIN_TIMEOUT_MS) }
+                .getOrElse { exception ->
+                    if (exception is InterruptedException) {
+                        Thread.currentThread().interrupt()
+                    }
+                    false
+                }
+        } ?: true
+        if (!workerStopped) {
+            Thread(
+                {
+                    runCatching { activeWorker.stopAndJoin() }
+                    releaseAudioRecord(activeAudioRecord)
+                },
+                "SoundMemoPcmRelease",
+            ).start()
+        } else {
+            releaseAudioRecord(activeAudioRecord)
+        }
+    }
+
+    private fun releaseAudioRecord(activeAudioRecord: AudioRecord?) {
+        runCatching { activeAudioRecord?.release() }
         audioRecord = null
-        runCatching { writer?.close() }
-        writer = null
+        captureWorker = null
     }
 
     private fun createAudioRecord(): AudioRecord {
@@ -116,39 +143,6 @@ internal class PcmRecordingBackend(
             AudioFormat.ENCODING_PCM_16BIT,
             bufferSize * WavHeader.BYTES_PER_SAMPLE,
         )
-    }
-
-    private fun recordLoop() {
-        val samples = ShortArray(bufferSize)
-        try {
-            while (running) {
-                if (paused) {
-                    Thread.sleep(PAUSED_READ_SLEEP_MS)
-                    continue
-                }
-                val read = audioRecord?.read(samples, 0, samples.size) ?: break
-                check(read >= 0) { "AudioRecord read failed: $read" }
-                if (read == 0) {
-                    Thread.sleep(EMPTY_READ_SLEEP_MS)
-                    continue
-                }
-                if (paused) {
-                    amplitude.set(0)
-                    continue
-                }
-                var maxSample = 0
-                for (index in 0 until read) {
-                    maxSample = max(maxSample, abs(samples[index].toInt()))
-                }
-                amplitude.updateAndGet { current -> max(current, maxSample) }
-                if (!paused) {
-                    writer?.write(samples, read)
-                }
-            }
-        } catch (throwable: Throwable) {
-            recordingFailure.compareAndSet(null, throwable)
-            running = false
-        }
     }
 
     private interface PcmAudioWriter : AutoCloseable {
@@ -214,7 +208,7 @@ internal class PcmRecordingBackend(
     }
 
     private companion object {
-        private const val PAUSED_READ_SLEEP_MS = 50L
-        private const val EMPTY_READ_SLEEP_MS = 10L
+        private const val WORKER_JOIN_TIMEOUT_MS = 2_000L
+        private const val ERROR_STOPPED = -1
     }
 }

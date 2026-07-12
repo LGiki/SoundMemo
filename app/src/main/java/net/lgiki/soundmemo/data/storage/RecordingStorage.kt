@@ -131,6 +131,20 @@ class RecordingStorage(private val context: Context) {
             RecordingStorageType.File -> deleteFile(recording.filePath)
         }
 
+    fun deletePublishedRecording(saveResult: RecordingSaveResult): Boolean =
+        when (RecordingStorageType.fromStorageValue(saveResult.storageType)) {
+            RecordingStorageType.MediaStore -> {
+                val uri = saveResult.storageUri?.let(Uri::parse) ?: return true
+                runCatching { context.contentResolver.delete(uri, null, null) >= 0 }.getOrDefault(false)
+            }
+            RecordingStorageType.ContentUri -> {
+                val uri = saveResult.storageUri?.let(Uri::parse) ?: return true
+                runCatching { DocumentsContract.deleteDocument(context.contentResolver, uri) }
+                    .getOrElse { runCatching { context.contentResolver.delete(uri, null, null) >= 0 }.getOrDefault(false) }
+            }
+            RecordingStorageType.File -> deleteFile(saveResult.filePath)
+        }
+
     fun deleteFile(path: String): Boolean {
         val file = File(path)
         return !file.exists() || file.delete()
