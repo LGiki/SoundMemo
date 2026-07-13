@@ -30,6 +30,12 @@ add_library(
 )
 
 target_compile_definitions(mp3lame PRIVATE HAVE_CONFIG_H)
+target_link_options(
+    mp3lame
+    PRIVATE
+    "-Wl,-z,max-page-size=16384"
+    "-Wl,-z,common-page-size=16384"
+)
 target_include_directories(
     mp3lame
     PRIVATE
