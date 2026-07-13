@@ -50,6 +50,7 @@ import net.lgiki.soundmemo.ui.recorder.RecorderViewModel
 import net.lgiki.soundmemo.ui.settings.PrivacyScreen
 import net.lgiki.soundmemo.ui.settings.SettingsScreen
 import net.lgiki.soundmemo.ui.settings.SettingsViewModel
+import net.lgiki.soundmemo.ui.settings.ThirdPartyLicensesScreen
 import net.lgiki.soundmemo.ui.theme.SoundMemoTheme
 import net.lgiki.soundmemo.ui.theme.shouldUseDarkTheme
 import net.lgiki.soundmemo.util.wrapWithLocale
@@ -227,10 +228,16 @@ private fun SoundMemoApp(
                 SettingsScreen(
                     viewModel = settingsViewModel,
                     onPrivacyClick = { navController.navigate("privacy") },
+                    onThirdPartyLicensesClick = { navController.navigate("licenses") },
                 )
             }
             composable("privacy") {
                 PrivacyScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable("licenses") {
+                ThirdPartyLicensesScreen(
                     onNavigateBack = { navController.popBackStack() },
                 )
             }

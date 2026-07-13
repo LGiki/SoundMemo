@@ -109,6 +109,7 @@ private const val SOURCE_REPO_URL = "https://github.com/LGiki/SoundMemo"
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onPrivacyClick: () -> Unit,
+    onThirdPartyLicensesClick: () -> Unit,
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val bitrateOptions by viewModel.bitrateOptions.collectAsStateWithLifecycle()
@@ -413,6 +414,20 @@ fun SettingsScreen(
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SOURCE_REPO_URL)))
                         },
                     )
+                    PreferenceDivider()
+                    PreferenceRow(
+                        leadingIcon = Icons.Default.Description,
+                        headline = stringResource(R.string.settings_third_party_licenses),
+                        supporting = stringResource(R.string.settings_third_party_licenses_desc),
+                        onClick = onThirdPartyLicensesClick,
+                        trailing = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                    )
                 }
             }
         }
@@ -544,6 +559,63 @@ fun SettingsScreen(
             onDismiss = { openDialog = null },
         )
         null -> Unit
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ThirdPartyLicensesScreen(
+    onNavigateBack: () -> Unit,
+) {
+    val context = LocalContext.current
+    val licenseText = remember(context) {
+        runCatching {
+            context.assets.open("COPYING").bufferedReader().use { it.readText() }
+        }.getOrDefault("")
+    }
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.settings_third_party_licenses)) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.settings_back),
+                        )
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.surface),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Text(
+                    text = stringResource(R.string.third_party_lame_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
+            item {
+                Text(
+                    text = stringResource(R.string.third_party_lame_desc),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+            item {
+                Text(
+                    text = licenseText,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
     }
 }
 

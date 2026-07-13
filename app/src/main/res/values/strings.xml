@@ -188,6 +188,10 @@
     <string name="settings_about_desc">Open source Android voice recorder</string>
     <string name="settings_version_code">Version code: %1$d</string>
     <string name="settings_source_repo">Source Code</string>
+    <string name="settings_third_party_licenses">Third-party licenses</string>
+    <string name="settings_third_party_licenses_desc">Open-source notices and license terms</string>
+    <string name="third_party_lame_title">LAME MP3 Encoder</string>
+    <string name="third_party_lame_desc">SoundMemo uses LAME, licensed under the GNU Lesser General Public License version 2.0. Source and modifications are available with SoundMemo’s source code.</string>
 
     <!-- Language Names -->
     <string name="lang_system">System</string>

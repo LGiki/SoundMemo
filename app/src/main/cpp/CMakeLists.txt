@@ -6,7 +6,7 @@ set(LAME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lame)
 
 add_library(
     mp3lame
-    STATIC
+    SHARED
     ${LAME_DIR}/libmp3lame/VbrTag.c
     ${LAME_DIR}/libmp3lame/bitstream.c
     ${LAME_DIR}/libmp3lame/encoder.c

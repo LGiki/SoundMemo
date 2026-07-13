@@ -4,6 +4,20 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val generatedThirdPartyLicensesDir = layout.buildDirectory.dir("generated/thirdPartyLicenses")
+val copyThirdPartyLicenses by tasks.registering(Copy::class) {
+    from("src/main/cpp/lame") {
+        include("COPYING", "LICENSE")
+    }
+    into(generatedThirdPartyLicensesDir)
+}
+
+tasks.matching {
+    (it.name.startsWith("merge") && it.name.endsWith("Assets")) || it.name.contains("Lint")
+}.configureEach {
+    dependsOn(copyThirdPartyLicenses)
+}
+
 android {
     namespace = "net.lgiki.soundmemo"
     ndkVersion = "27.0.12077973"
@@ -25,9 +39,7 @@ android {
 
     buildTypes {
         release {
-            optimization {
-                enable = false
-            }
+            isMinifyEnabled = true
         }
     }
     compileOptions {
@@ -54,6 +66,7 @@ android {
     }
     sourceSets {
         getByName("androidTest").assets.directories.add("$projectDir/schemas")
+        getByName("main").assets.directories.add(generatedThirdPartyLicensesDir.get().asFile.path)
     }
 }
 

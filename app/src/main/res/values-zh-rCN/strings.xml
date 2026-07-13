@@ -185,6 +185,10 @@
     <string name="settings_about_desc">开源 Android 录音机</string>
     <string name="settings_version_code">版本代码：%1$d</string>
     <string name="settings_source_repo">源代码</string>
+    <string name="settings_third_party_licenses">第三方许可证</string>
+    <string name="settings_third_party_licenses_desc">开源声明和许可证条款</string>
+    <string name="third_party_lame_title">LAME MP3 编码器</string>
+    <string name="third_party_lame_desc">SoundMemo 使用 LAME，其采用 GNU 宽通用公共许可证 2.0 版授权。源代码和修改内容可随 SoundMemo 源代码一并获取。</string>
 
     <!-- Language Names -->
     <string name="lang_system">跟随系统</string>
