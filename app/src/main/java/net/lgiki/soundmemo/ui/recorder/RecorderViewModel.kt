@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.SoundMemoContainer
 import net.lgiki.soundmemo.data.settings.RecorderVisualization
 import net.lgiki.soundmemo.data.settings.VuMeterValueDisplay
@@ -22,9 +23,10 @@ import net.lgiki.soundmemo.data.storage.AbandonedRecordingFiles
 import net.lgiki.soundmemo.domain.recorder.AudioInputDevice
 import net.lgiki.soundmemo.domain.recorder.AudioInputPreference
 import net.lgiki.soundmemo.domain.recorder.RecorderUiState
+import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.RecordingStateHolder
 import net.lgiki.soundmemo.domain.recorder.consumeRecorderMessage
-import net.lgiki.soundmemo.domain.recorder.isRecorderWorkflowActive
+import net.lgiki.soundmemo.domain.recorder.canManageAbandonedStagingFiles
 import net.lgiki.soundmemo.service.RecordingService
 
 class RecorderViewModel(
@@ -56,14 +58,25 @@ class RecorderViewModel(
     val stagingFilesState: StateFlow<StagingFilesUiState> = mutableStagingFilesState
 
     fun start(context: Context, recordLocation: Boolean) {
-        ContextCompat.startForegroundService(
-            context,
-            RecordingService.startIntent(
+        mutableStagingFilesState.value = StagingFilesUiState()
+        RecordingStateHolder.update(RecorderUiState(status = RecorderStatus.Starting))
+        try {
+            ContextCompat.startForegroundService(
                 context,
-                RecordingService.ACTION_START,
-                recordLocation = recordLocation,
-            ),
-        )
+                RecordingService.startIntent(
+                    context,
+                    RecordingService.ACTION_START,
+                    recordLocation = recordLocation,
+                ),
+            )
+        } catch (exception: Exception) {
+            RecordingStateHolder.update(
+                RecorderUiState(
+                    status = RecorderStatus.Error,
+                    message = exception.localizedMessage ?: context.getString(R.string.recorder_start_failed),
+                ),
+            )
+        }
     }
 
     fun startWithOptionalLocation(context: Context, recordLocation: Boolean) {
@@ -104,7 +117,7 @@ class RecorderViewModel(
             val files = withContext(Dispatchers.IO) {
                 container.recordingStorage.abandonedTempRecordings()
             }
-            if (!files.isEmpty && !isRecorderWorkflowActive(state.value.status)) {
+            if (!files.isEmpty && canManageAbandonedStagingFiles(state.value.status)) {
                 mutableStagingFilesState.value = StagingFilesUiState(files = files)
             }
         }
@@ -117,6 +130,10 @@ class RecorderViewModel(
     fun deleteAbandonedStagingFiles() {
         val files = mutableStagingFilesState.value.files ?: return
         if (mutableStagingFilesState.value.isDeleting) return
+        if (!canManageAbandonedStagingFiles(state.value.status)) {
+            mutableStagingFilesState.value = StagingFilesUiState()
+            return
+        }
         mutableStagingFilesState.value = mutableStagingFilesState.value.copy(isDeleting = true)
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {

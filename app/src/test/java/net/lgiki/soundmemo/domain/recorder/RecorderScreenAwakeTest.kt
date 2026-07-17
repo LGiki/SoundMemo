@@ -10,6 +10,7 @@ class RecorderScreenAwakeTest {
     @Test
     fun enabled_keepsScreenAwakeOnlyDuringActiveRecordingWorkflow() {
         assertFalse(shouldKeepScreenAwake(true, RecorderStatus.Idle))
+        assertTrue(shouldKeepScreenAwake(true, RecorderStatus.Starting))
         assertTrue(shouldKeepScreenAwake(true, RecorderStatus.Recording))
         assertTrue(shouldKeepScreenAwake(true, RecorderStatus.Paused))
         assertTrue(shouldKeepScreenAwake(true, RecorderStatus.Saving))
@@ -22,6 +23,14 @@ class RecorderScreenAwakeTest {
         RecorderStatus.entries.forEach { status ->
             assertFalse(shouldKeepScreenAwake(false, status))
         }
+    }
+
+    @Test
+    fun stagingCleanup_isBlockedWhileRecordingIsStartingOrActive() {
+        assertFalse(canManageAbandonedStagingFiles(RecorderStatus.Starting))
+        assertFalse(canManageAbandonedStagingFiles(RecorderStatus.Recording))
+        assertFalse(canManageAbandonedStagingFiles(RecorderStatus.Saving))
+        assertTrue(canManageAbandonedStagingFiles(RecorderStatus.Idle))
     }
 
     @Test

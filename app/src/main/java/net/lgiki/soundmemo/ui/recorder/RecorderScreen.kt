@@ -507,6 +507,12 @@ private fun RecorderControls(
                         )
                     }
                 }
+                RecorderStatus.Starting -> {
+                    Text(
+                        text = stringResource(R.string.notification_text_starting),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
                 RecorderStatus.Recording -> {
                     TransportButton(
                         onClick = onPause,

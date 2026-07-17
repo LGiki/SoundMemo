@@ -138,11 +138,13 @@ internal class PcmRecordingBackend(
             Thread(
                 {
                     runCatching { activeWorker.stopAndJoin() }
+                    runCatching { writer.close() }
                     releaseAudioRecord(activeAudioRecord)
                 },
                 "SoundMemoPcmRelease",
             ).start()
         } else {
+            runCatching { writer.close() }
             releaseAudioRecord(activeAudioRecord)
         }
     }

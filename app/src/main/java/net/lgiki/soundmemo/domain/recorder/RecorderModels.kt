@@ -4,6 +4,7 @@ const val WAVEFORM_SAMPLE_COUNT = 48
 
 enum class RecorderStatus {
     Idle,
+    Starting,
     Recording,
     Paused,
     Saving,
@@ -19,7 +20,11 @@ internal fun isRecorderWorkflowActive(status: RecorderStatus): Boolean =
         RecorderStatus.Recording,
         RecorderStatus.Paused,
         RecorderStatus.Saving,
+        RecorderStatus.Starting,
     )
+
+internal fun canManageAbandonedStagingFiles(status: RecorderStatus): Boolean =
+    !isRecorderWorkflowActive(status)
 
 internal fun consumeRecorderMessage(state: RecorderUiState): RecorderUiState =
     state.copy(

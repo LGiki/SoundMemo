@@ -298,7 +298,7 @@ class RecordingService : LifecycleService() {
     ) {
         try {
             cleanupRecorder()
-            file?.delete()
+            file?.let(::deleteStagedRecordingOutputs)
             RecordingStateHolder.update(
                 RecorderUiState(
                     status = RecorderStatus.Error,
@@ -403,14 +403,14 @@ class RecordingService : LifecycleService() {
                         }
                     } else {
                         recordedOutputs.forEach { it.file.delete() }
-                        file?.delete()
+                        file?.let(::deleteStagedRecordingOutputs)
                         RecordingStateHolder.update(RecorderUiState(status = RecorderStatus.Idle))
                     }
                 } catch (exception: Exception) {
                     cleanupRecorder()
                     saveResults.forEach(container.recordingStorage::deletePublishedRecording)
                     recordedOutputs.forEach { it.file.delete() }
-                    file?.delete()
+                    file?.let(::deleteStagedRecordingOutputs)
                     RecordingStateHolder.update(
                         RecorderUiState(
                             status = RecorderStatus.Error,
@@ -500,6 +500,20 @@ class RecordingService : LifecycleService() {
         pausedAt = 0L
         pausedTotal = 0L
         ticker?.cancel()
+    }
+
+    private fun deleteStagedRecordingOutputs(firstFile: File) {
+        val baseName = firstFile.nameWithoutExtension
+        val extension = firstFile.extension
+        firstFile.parentFile
+            ?.listFiles()
+            .orEmpty()
+            .filter { candidate ->
+                candidate.isFile &&
+                    (candidate.name == firstFile.name ||
+                        (candidate.extension == extension && candidate.nameWithoutExtension.startsWith("${baseName}_part")))
+            }
+            .forEach(File::delete)
     }
 
     private fun ensureChannel() {
