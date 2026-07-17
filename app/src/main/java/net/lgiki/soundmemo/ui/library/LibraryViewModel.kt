@@ -120,9 +120,9 @@ internal fun shareMimeType(format: String): String = when (format.lowercase()) {
 
 private fun RecordingSort.comparator(): Comparator<Recording> =
     when (this) {
-        RecordingSort.Newest -> compareByDescending { it.createdAt }
-        RecordingSort.Oldest -> compareBy { it.createdAt }
-        RecordingSort.Longest -> compareByDescending { it.durationMs }
-        RecordingSort.Shortest -> compareBy { it.durationMs }
-        RecordingSort.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
+        RecordingSort.Newest -> compareByDescending<Recording> { it.createdAt }.thenBy { it.id }
+        RecordingSort.Oldest -> compareBy<Recording> { it.createdAt }.thenBy { it.id }
+        RecordingSort.Longest -> compareByDescending<Recording> { it.durationMs }.thenBy { it.id }
+        RecordingSort.Shortest -> compareBy<Recording> { it.durationMs }.thenBy { it.id }
+        RecordingSort.Name -> compareBy<Recording, String>(String.CASE_INSENSITIVE_ORDER) { it.name }.thenBy { it.id }
     }

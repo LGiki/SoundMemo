@@ -55,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -116,6 +117,7 @@ fun SettingsScreen(
     val audioInputDevices by viewModel.audioInputDevices.collectAsStateWithLifecycle()
     var openDialog by remember { mutableStateOf<SettingsDialog?>(null) }
     val context = LocalContext.current
+    val resources = LocalResources.current
     val versionCode = remember(context) {
         PackageInfoCompat.getLongVersionCode(
             context.packageManager.getPackageInfo(context.packageName, 0),
@@ -170,14 +172,14 @@ fun SettingsScreen(
         val volume = documentId?.substringBefore(':', missingDelimiterValue = "")
         val path = documentId?.substringAfter(':', missingDelimiterValue = "")?.trim('/')
         return when {
-            volume == "primary" && path.isNullOrBlank() -> context.getString(R.string.settings_storage_internal)
-            volume == "primary" -> context.getString(R.string.settings_storage_internal_path, path)
+            volume == "primary" && path.isNullOrBlank() -> resources.getString(R.string.settings_storage_internal)
+            volume == "primary" -> resources.getString(R.string.settings_storage_internal_path, path)
             !volume.isNullOrBlank() && path.isNullOrBlank() -> volume
             !volume.isNullOrBlank() -> "$volume/$path"
             else -> null
         }
             ?: uri.lastPathSegment
-            ?: context.getString(R.string.settings_save_location_custom_folder)
+            ?: resources.getString(R.string.settings_save_location_custom_folder)
     }
     val customFolderLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
@@ -871,7 +873,8 @@ private fun FileNameTemplateDialog(
         }
     }
     val unknownTokens = remember(template) { RecordingNameTemplate.unknownTokens(template) }
-    val isValid = unknownTokens.isEmpty()
+    val malformedBraces = remember(template) { RecordingNameTemplate.hasMalformedBraces(template) }
+    val isValid = RecordingNameTemplate.isValid(template)
     val preview = remember(template, previewNow) {
         RecordingNameTemplate.preview(template, now = previewNow)
     }
@@ -889,10 +892,14 @@ private fun FileNameTemplateDialog(
                     supportingText = if (!isValid) {
                         {
                             Text(
-                                stringResource(
-                                    R.string.settings_file_name_template_unknown_tokens,
-                                    unknownTokens.joinToString(", ") { "{$it}" },
-                                ),
+                                if (malformedBraces) {
+                                    stringResource(R.string.settings_file_name_template_malformed)
+                                } else {
+                                    stringResource(
+                                        R.string.settings_file_name_template_unknown_tokens,
+                                        unknownTokens.joinToString(", ") { "{$it}" },
+                                    )
+                                },
                             )
                         }
                     } else {

@@ -36,8 +36,13 @@
     <string name="recorder_discard_confirm_title">放棄錄音？</string>
     <string name="recorder_discard_confirm_message">所有已錄製的音訊將被永久刪除，此操作無法復原。</string>
     <string name="recorder_saved_message">錄音已儲存。</string>
+    <plurals name="recorder_saved_parts_message">
+        <item quantity="other">錄音已儲存為 %1$d 個分段。</item>
+    </plurals>
     <string name="recorder_saved_to_app_files_message">錄音已儲存到應用程式檔案。所選資料夾無法使用。</string>
     <string name="recorder_start_failed">無法開始錄音。</string>
+    <string name="recorder_stereo_fallback_message">此輸入裝置不支援立體聲，已使用單聲道錄音。</string>
+    <string name="recorder_recording_part_name">%1$s（第 %2$d 段）</string>
     <string name="recorder_audio_input_current">錄音輸入</string>
     <string name="recorder_audio_input_preferred">音訊輸入裝置</string>
     <string name="recorder_audio_input_detecting">正在偵測…</string>
@@ -149,6 +154,7 @@
     <string name="settings_file_name_template_label">範本</string>
     <string name="settings_file_name_template_insert_token">插入標記</string>
     <string name="settings_file_name_template_unknown_tokens">未知標記：%1$s</string>
+    <string name="settings_file_name_template_malformed">請使用完整的預留位置，例如 {date}、{time} 或 {id}。</string>
     <string name="settings_file_name_template_preview_label">預覽</string>
     <string name="settings_file_name_template_preview">%1$s.%2$s</string>
     <string name="settings_file_name_template_reset">重設</string>
@@ -215,4 +221,16 @@
 
     <!-- Share -->
     <string name="share_title">分享錄音</string>
+
+    <!-- Interrupted recording recovery -->
+    <string name="staging_files_title">未完成的錄音檔案</string>
+    <plurals name="staging_files_count">
+        <item quantity="other">%1$d 個暫存檔案</item>
+    </plurals>
+    <string name="staging_files_message">SoundMemo 發現錄音中斷後留下的 %1$s（%2$s）。這些檔案不在錄音庫中。你可以刪除它們以釋放空間，或保留到下次啟動應用程式。</string>
+    <string name="staging_files_delete">刪除檔案</string>
+    <string name="staging_files_keep">保留</string>
+    <plurals name="staging_files_delete_failed">
+        <item quantity="other">有 %1$d 個檔案無法刪除。你可以重試或保留它們。</item>
+    </plurals>
 </resources>

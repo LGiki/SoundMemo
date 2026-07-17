@@ -12,6 +12,7 @@ import android.provider.MediaStore
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import java.io.File
+import java.io.FileNotFoundException
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -19,7 +20,11 @@ import net.lgiki.soundmemo.data.model.Recording
 import net.lgiki.soundmemo.data.model.RecordingStorageType
 import net.lgiki.soundmemo.data.settings.RecordingStorageLocation
 
-class RecordingStorage(private val context: Context) {
+class RecordingStorage internal constructor(
+    private val context: Context,
+    uriOperations: RecordingUriOperations = AndroidRecordingUriOperations(context),
+) {
+    private val uriDeleter = RecordingUriDeleter(uriOperations)
     private val appRecordingsDir: File
         get() = File(
             context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
@@ -32,6 +37,14 @@ class RecordingStorage(private val context: Context) {
 
     fun createTempOutputFile(generatedName: GeneratedRecordingName): File =
         File(tempRecordingsDir, generatedName.fileName)
+
+    fun abandonedTempRecordings(): AbandonedRecordingFiles {
+        return abandonedRecordingFilesIn(tempRecordingsDir)
+    }
+
+    fun deleteAbandonedTempRecordings(files: AbandonedRecordingFiles): StagingCleanupResult {
+        return deleteAbandonedRecordingFilesIn(tempRecordingsDir, files)
+    }
 
     fun publishRecording(
         tempFile: File,
@@ -121,12 +134,11 @@ class RecordingStorage(private val context: Context) {
         when (RecordingStorageType.fromStorageValue(recording.storageType)) {
             RecordingStorageType.MediaStore -> {
                 val uri = recording.storageUri?.let(Uri::parse) ?: return true
-                runCatching { context.contentResolver.delete(uri, null, null) >= 0 }.getOrDefault(false)
+                uriDeleter.delete(uri, documentUri = false)
             }
             RecordingStorageType.ContentUri -> {
                 val uri = recording.storageUri?.let(Uri::parse) ?: return true
-                runCatching { DocumentsContract.deleteDocument(context.contentResolver, uri) }
-                    .getOrElse { runCatching { context.contentResolver.delete(uri, null, null) >= 0 }.getOrDefault(false) }
+                uriDeleter.delete(uri, documentUri = true)
             }
             RecordingStorageType.File -> deleteFile(recording.filePath)
         }
@@ -135,12 +147,11 @@ class RecordingStorage(private val context: Context) {
         when (RecordingStorageType.fromStorageValue(saveResult.storageType)) {
             RecordingStorageType.MediaStore -> {
                 val uri = saveResult.storageUri?.let(Uri::parse) ?: return true
-                runCatching { context.contentResolver.delete(uri, null, null) >= 0 }.getOrDefault(false)
+                uriDeleter.delete(uri, documentUri = false)
             }
             RecordingStorageType.ContentUri -> {
                 val uri = saveResult.storageUri?.let(Uri::parse) ?: return true
-                runCatching { DocumentsContract.deleteDocument(context.contentResolver, uri) }
-                    .getOrElse { runCatching { context.contentResolver.delete(uri, null, null) >= 0 }.getOrDefault(false) }
+                uriDeleter.delete(uri, documentUri = true)
             }
             RecordingStorageType.File -> deleteFile(saveResult.filePath)
         }
@@ -288,6 +299,52 @@ class RecordingStorage(private val context: Context) {
     }
 }
 
+internal enum class UriPresence {
+    Present,
+    Absent,
+    Unknown,
+}
+
+internal interface RecordingUriOperations {
+    fun delete(uri: Uri): Int
+    fun deleteDocument(uri: Uri): Boolean
+    fun presence(uri: Uri): UriPresence
+}
+
+private class AndroidRecordingUriOperations(context: Context) : RecordingUriOperations {
+    private val resolver = context.contentResolver
+
+    override fun delete(uri: Uri): Int = resolver.delete(uri, null, null)
+
+    override fun deleteDocument(uri: Uri): Boolean = DocumentsContract.deleteDocument(resolver, uri)
+
+    override fun presence(uri: Uri): UriPresence = try {
+        val descriptor = resolver.openFileDescriptor(uri, "r") ?: return UriPresence.Unknown
+        descriptor.use { UriPresence.Present }
+    } catch (_: FileNotFoundException) {
+        UriPresence.Absent
+    } catch (_: Exception) {
+        UriPresence.Unknown
+    }
+}
+
+internal class RecordingUriDeleter(
+    private val operations: RecordingUriOperations,
+) {
+    fun delete(uri: Uri, documentUri: Boolean): Boolean {
+        if (documentUri && runCatching { operations.deleteDocument(uri) }.getOrDefault(false)) {
+            return true
+        }
+        val deletedRows = runCatching { operations.delete(uri) }.getOrElse { return false }
+        return when {
+            deletedRows > 0 -> true
+            deletedRows == 0 -> runCatching { operations.presence(uri) }
+                .getOrDefault(UriPresence.Unknown) == UriPresence.Absent
+            else -> false
+        }
+    }
+}
+
 data class RecordingSaveResult(
     val storageType: String,
     val filePath: String,
@@ -295,6 +352,49 @@ data class RecordingSaveResult(
     val fileSizeBytes: Long,
     val fellBackToAppFiles: Boolean,
 )
+
+class AbandonedRecordingFiles internal constructor(
+    internal val files: List<File>,
+) {
+    val count: Int = files.size
+    val totalBytes: Long = files.sumOf { file -> file.length().coerceAtLeast(0L) }
+    val isEmpty: Boolean = files.isEmpty()
+}
+
+data class StagingCleanupResult(
+    val deletedCount: Int,
+    val failedFiles: AbandonedRecordingFiles,
+)
+
+internal fun abandonedRecordingFilesIn(directory: File): AbandonedRecordingFiles {
+    val safeDirectory = directory.canonicalFile
+    val files = safeDirectory.listFiles()
+        .orEmpty()
+        .asSequence()
+        .filter(File::isFile)
+        .mapNotNull { file -> runCatching { file.canonicalFile }.getOrNull() }
+        .filter { file -> file.parentFile == safeDirectory }
+        .sortedBy(File::lastModified)
+        .toList()
+    return AbandonedRecordingFiles(files)
+}
+
+internal fun deleteAbandonedRecordingFilesIn(
+    directory: File,
+    files: AbandonedRecordingFiles,
+): StagingCleanupResult {
+    val safeDirectory = directory.canonicalFile
+    val failed = files.files.filter { file ->
+        val safeFile = runCatching { file.canonicalFile }.getOrNull()
+        safeFile == null ||
+            safeFile.parentFile != safeDirectory ||
+            (safeFile.exists() && !safeFile.delete())
+    }
+    return StagingCleanupResult(
+        deletedCount = files.count - failed.size,
+        failedFiles = AbandonedRecordingFiles(failed),
+    )
+}
 
 internal fun mimeTypeForFormat(format: String): String = when (format.lowercase()) {
     "m4a" -> "audio/mp4"

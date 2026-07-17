@@ -103,7 +103,7 @@ fun RecorderScreen(
     LaunchedEffect(state.message) {
         state.message?.let {
             snackbar.showSnackbar(it)
-            viewModel.resetSavedMessage()
+            viewModel.consumeMessage()
         }
     }
     Scaffold(

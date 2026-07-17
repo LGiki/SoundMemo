@@ -13,7 +13,7 @@ data class GeneratedRecordingName(
 )
 
 object RecordingNameTemplate {
-    private val tokenRegex = Regex("""\{([A-Za-z]+)\}""")
+    private val tokenRegex = Regex("""\{([^{}]*)\}""")
     private val unsafeFileNameChars = Regex("""[\\/:*?"<>|\p{Cntrl}]""")
     val supportedTokens = listOf("date", "time", "id")
     private val supportedTokenSet = supportedTokens.toSet()
@@ -24,7 +24,11 @@ object RecordingNameTemplate {
             .filterNot { it in supportedTokenSet }
             .toSet()
 
-    fun isValid(template: String): Boolean = unknownTokens(template).isEmpty()
+    fun hasMalformedBraces(template: String): Boolean =
+        tokenRegex.replace(template, "").any { it == '{' || it == '}' }
+
+    fun isValid(template: String): Boolean =
+        unknownTokens(template).isEmpty() && !hasMalformedBraces(template)
 
     fun generate(
         template: String,
@@ -39,10 +43,21 @@ object RecordingNameTemplate {
         val sanitized = sanitize(rendered).ifBlank {
             render(DEFAULT_RECORDING_NAME_TEMPLATE, now, id)
         }
-        val fileBaseName = if ("{id}" in safeTemplate) sanitized else "${sanitized}_$id"
+        val uniqueSuffix = if ("{id}" in safeTemplate) "" else "_$id"
+        val extensionSuffix = ".$extension"
+        val maxRenderedBytes = (
+            MAX_COMPLETE_FILE_NAME_BYTES -
+                PART_SUFFIX_RESERVED_BYTES -
+                uniqueSuffix.toByteArray(Charsets.UTF_8).size -
+                extensionSuffix.toByteArray(Charsets.UTF_8).size
+            ).coerceAtLeast(1)
+        val safeDisplayName = truncateUtf8(sanitized, maxRenderedBytes).ifBlank {
+            truncateUtf8(render(DEFAULT_RECORDING_NAME_TEMPLATE, now, id), maxRenderedBytes)
+        }
+        val fileBaseName = "$safeDisplayName$uniqueSuffix"
         return GeneratedRecordingName(
-            fileName = "$fileBaseName.$extension",
-            displayName = sanitized,
+            fileName = "$fileBaseName$extensionSuffix",
+            displayName = safeDisplayName,
         )
     }
 
@@ -63,6 +78,16 @@ object RecordingNameTemplate {
         now: Long = System.currentTimeMillis(),
         sampleId: String = "a1b2c3d4",
     ): String = replacements(now, sampleId)[token].orEmpty()
+
+    fun forPart(generatedName: GeneratedRecordingName, partIndex: Int): GeneratedRecordingName {
+        require(partIndex >= 1) { "Recording part index must be positive" }
+        if (partIndex == 1) return generatedName
+        val file = java.io.File(generatedName.fileName)
+        val suffix = "_part${partIndex.toString().padStart(2, '0')}"
+        return generatedName.copy(
+            fileName = "${file.nameWithoutExtension}$suffix.${file.extension}",
+        )
+    }
 
     private fun render(template: String, now: Long, id: String): String {
         val replacements = replacements(now, id)
@@ -85,4 +110,25 @@ object RecordingNameTemplate {
             .replace(unsafeFileNameChars, "_")
             .replace(Regex("""\s+"""), " ")
             .trim('.', ' ')
+
+    internal fun truncateUtf8(value: String, maxBytes: Int): String {
+        if (maxBytes <= 0) return ""
+        if (value.toByteArray(Charsets.UTF_8).size <= maxBytes) return value
+        val result = StringBuilder()
+        var byteCount = 0
+        var offset = 0
+        while (offset < value.length) {
+            val codePoint = value.codePointAt(offset)
+            val text = String(Character.toChars(codePoint))
+            val codePointBytes = text.toByteArray(Charsets.UTF_8).size
+            if (byteCount + codePointBytes > maxBytes) break
+            result.append(text)
+            byteCount += codePointBytes
+            offset += Character.charCount(codePoint)
+        }
+        return result.toString().trimEnd('.', ' ')
+    }
+
+    internal const val MAX_COMPLETE_FILE_NAME_BYTES = 240
+    private const val PART_SUFFIX_RESERVED_BYTES = 12
 }

@@ -43,23 +43,52 @@ class RecordingRepository(private val dao: RecordingDao) {
         sampleRate: Int,
         format: String,
         location: RecordingLocation?,
-    ): Long = dao.insert(
-        Recording(
-            name = name.trim().ifBlank { File(saveResult.filePath).toRecordingName() },
-            filePath = saveResult.filePath,
-            fileSizeBytes = saveResult.fileSizeBytes,
-            storageType = saveResult.storageType,
-            storageUri = saveResult.storageUri,
-            durationMs = durationMs,
-            format = format,
-            bitrate = bitrate,
-            sampleRate = sampleRate,
-            locationLatitude = location?.latitude,
-            locationLongitude = location?.longitude,
-            locationAccuracyMeters = location?.accuracyMeters,
-            locationCapturedAt = location?.capturedAt,
+    ): Long = addFromSaveResults(
+        parts = listOf(
+            RecordingPartSave(
+                saveResult = saveResult,
+                name = name,
+                durationMs = durationMs,
+            ),
         ),
-    )
+        bitrate = bitrate,
+        sampleRate = sampleRate,
+        format = format,
+        location = location,
+    ).single()
+
+    suspend fun addFromSaveResults(
+        parts: List<RecordingPartSave>,
+        bitrate: Int,
+        sampleRate: Int,
+        format: String,
+        location: RecordingLocation?,
+    ): List<Long> {
+        require(parts.isNotEmpty()) { "At least one recording part is required" }
+        val createdAt = System.currentTimeMillis()
+        return dao.insertAll(
+            parts.map { part ->
+                val saveResult = part.saveResult
+                Recording(
+                    name = part.name.trim().ifBlank { File(saveResult.filePath).toRecordingName() },
+                    filePath = saveResult.filePath,
+                    fileSizeBytes = saveResult.fileSizeBytes,
+                    storageType = saveResult.storageType,
+                    storageUri = saveResult.storageUri,
+                    durationMs = part.durationMs,
+                    format = format,
+                    bitrate = bitrate,
+                    sampleRate = sampleRate,
+                    createdAt = createdAt,
+                    updatedAt = createdAt,
+                    locationLatitude = location?.latitude,
+                    locationLongitude = location?.longitude,
+                    locationAccuracyMeters = location?.accuracyMeters,
+                    locationCapturedAt = location?.capturedAt,
+                )
+            },
+        )
+    }
 
     suspend fun get(id: Long): Recording? = dao.getById(id)
 
@@ -106,6 +135,12 @@ class RecordingRepository(private val dao: RecordingDao) {
         }
     }
 }
+
+data class RecordingPartSave(
+    val saveResult: RecordingSaveResult,
+    val name: String,
+    val durationMs: Long,
+)
 
 private fun File.toRecordingName(): String {
     val name = nameWithoutExtension

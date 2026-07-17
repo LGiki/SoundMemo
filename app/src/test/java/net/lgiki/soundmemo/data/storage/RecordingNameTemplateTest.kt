@@ -73,9 +73,12 @@ class RecordingNameTemplateTest {
     }
 
     @Test
-    fun unknownTokens_matchesOnlyClosedBraceTokens() {
+    fun isValid_rejectsUnclosedAndMalformedBraceTokens() {
         assertTrue(RecordingNameTemplate.unknownTokens("Recording_{date").isEmpty())
-        assertEquals(setOf("counter"), RecordingNameTemplate.unknownTokens("Recording_{counter}"))
+        assertFalse(RecordingNameTemplate.isValid("Recording_{date"))
+        assertFalse(RecordingNameTemplate.isValid("Recording_date}"))
+        assertFalse(RecordingNameTemplate.isValid("Recording_{date_}"))
+        assertEquals(setOf("date_"), RecordingNameTemplate.unknownTokens("Recording_{date_}"))
     }
 
     @Test
@@ -112,5 +115,31 @@ class RecordingNameTemplateTest {
 
         assertEquals("Interview_000001_a1b2c3d4", preview)
         assertTrue(RecordingNameTemplate.isValid("Interview_{time}_{id}"))
+    }
+
+    @Test
+    fun generate_truncatesMultibyteNameWithinSafeFileNameLimit() {
+        val generated = RecordingNameTemplate.generate(
+            template = "录".repeat(200),
+            extension = "wav",
+            uniqueSuffix = "abcdef12-3456-7890",
+        )
+
+        assertTrue(
+            generated.fileName.toByteArray(Charsets.UTF_8).size <=
+                RecordingNameTemplate.MAX_COMPLETE_FILE_NAME_BYTES,
+        )
+        assertFalse(generated.displayName.endsWith('\uFFFD'))
+    }
+
+    @Test
+    fun forPart_keepsFirstNameAndAddsOrderedSuffixes() {
+        val generated = GeneratedRecordingName("Meeting_abcdef12.wav", "Meeting")
+
+        assertEquals(generated, RecordingNameTemplate.forPart(generated, 1))
+        assertEquals(
+            "Meeting_abcdef12_part02.wav",
+            RecordingNameTemplate.forPart(generated, 2).fileName,
+        )
     }
 }

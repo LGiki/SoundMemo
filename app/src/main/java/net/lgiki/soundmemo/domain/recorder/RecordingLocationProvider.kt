@@ -59,6 +59,7 @@ object RecordingLocationProvider {
             } else {
                 currentLocationLegacy(manager, provider)
             }?.toRecordingLocation()
+                ?.takeIf { isLocationTimestampFresh(it.capturedAt) }
         }.getOrNull()
     }
 
@@ -100,6 +101,7 @@ object RecordingLocationProvider {
         permittedProviders(context)
             .filter { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
             .mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
+            .filter { location -> isLocationTimestampFresh(location.time) }
             .maxByOrNull { it.time }
             ?.toRecordingLocation()
 
@@ -123,4 +125,14 @@ object RecordingLocationProvider {
             accuracyMeters = if (hasAccuracy()) accuracy else null,
             capturedAt = if (time > 0L) time else System.currentTimeMillis(),
         )
+
+    internal fun isLocationTimestampFresh(
+        capturedAt: Long,
+        now: Long = System.currentTimeMillis(),
+    ): Boolean = capturedAt > 0L &&
+        capturedAt >= now - MAX_LOCATION_AGE_MS &&
+        capturedAt <= now + MAX_FUTURE_LOCATION_OFFSET_MS
+
+    internal const val MAX_LOCATION_AGE_MS = 5L * 60L * 1000L
+    private const val MAX_FUTURE_LOCATION_OFFSET_MS = 60L * 1000L
 }

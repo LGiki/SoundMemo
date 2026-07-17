@@ -36,8 +36,13 @@
     <string name="recorder_discard_confirm_title">放弃录音？</string>
     <string name="recorder_discard_confirm_message">所有已录制的音频将被永久删除，此操作无法撤销。</string>
     <string name="recorder_saved_message">录音已保存。</string>
+    <plurals name="recorder_saved_parts_message">
+        <item quantity="other">录音已保存为 %1$d 个分段。</item>
+    </plurals>
     <string name="recorder_saved_to_app_files_message">录音已保存到应用文件。所选文件夹不可用。</string>
     <string name="recorder_start_failed">无法开始录音。</string>
+    <string name="recorder_stereo_fallback_message">此输入设备不支持立体声，已使用单声道录音。</string>
+    <string name="recorder_recording_part_name">%1$s（第 %2$d 段）</string>
     <string name="recorder_audio_input_current">录音输入</string>
     <string name="recorder_audio_input_preferred">音频输入设备</string>
     <string name="recorder_audio_input_detecting">正在检测…</string>
@@ -149,6 +154,7 @@
     <string name="settings_file_name_template_label">模板</string>
     <string name="settings_file_name_template_insert_token">插入标记</string>
     <string name="settings_file_name_template_unknown_tokens">未知标记：%1$s</string>
+    <string name="settings_file_name_template_malformed">请使用完整的占位符，例如 {date}、{time} 或 {id}。</string>
     <string name="settings_file_name_template_preview_label">预览</string>
     <string name="settings_file_name_template_preview">%1$s.%2$s</string>
     <string name="settings_file_name_template_reset">重置</string>
@@ -215,4 +221,16 @@
 
     <!-- Share -->
     <string name="share_title">分享录音</string>
+
+    <!-- Interrupted recording recovery -->
+    <string name="staging_files_title">未完成的录音文件</string>
+    <plurals name="staging_files_count">
+        <item quantity="other">%1$d 个临时文件</item>
+    </plurals>
+    <string name="staging_files_message">SoundMemo 发现录音中断后留下的 %1$s（%2$s）。这些文件不在录音库中。你可以删除它们以释放空间，或保留到下次启动应用。</string>
+    <string name="staging_files_delete">删除文件</string>
+    <string name="staging_files_keep">保留</string>
+    <plurals name="staging_files_delete_failed">
+        <item quantity="other">有 %1$d 个文件无法删除。你可以重试或保留它们。</item>
+    </plurals>
 </resources>

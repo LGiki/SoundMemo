@@ -36,8 +36,14 @@
     <string name="recorder_discard_confirm_title">Discard recording?</string>
     <string name="recorder_discard_confirm_message">All recorded audio will be permanently deleted. This cannot be undone.</string>
     <string name="recorder_saved_message">Recording saved.</string>
+    <plurals name="recorder_saved_parts_message">
+        <item quantity="one">Recording saved.</item>
+        <item quantity="other">Recording saved as %1$d parts.</item>
+    </plurals>
     <string name="recorder_saved_to_app_files_message">Recording saved to app files. The selected folder is unavailable.</string>
     <string name="recorder_start_failed">Recording could not start.</string>
+    <string name="recorder_stereo_fallback_message">Stereo is unavailable on this input. Recording in mono.</string>
+    <string name="recorder_recording_part_name">%1$s (Part %2$d)</string>
     <string name="recorder_audio_input_current">Recording input</string>
     <string name="recorder_audio_input_preferred">Audio input device</string>
     <string name="recorder_audio_input_detecting">Detecting…</string>
@@ -151,6 +157,7 @@
     <string name="settings_file_name_template_label">Template</string>
     <string name="settings_file_name_template_insert_token">Insert token</string>
     <string name="settings_file_name_template_unknown_tokens">Unknown tokens: %1$s</string>
+    <string name="settings_file_name_template_malformed">Use complete placeholders such as {date}, {time}, or {id}.</string>
     <string name="settings_file_name_template_preview_label">Preview</string>
     <string name="settings_file_name_template_preview">%1$s.%2$s</string>
     <string name="settings_file_name_template_reset">Reset</string>
@@ -218,4 +225,18 @@
 
     <!-- Share -->
     <string name="share_title">Share recording</string>
+
+    <!-- Interrupted recording recovery -->
+    <string name="staging_files_title">Unfinished recording files</string>
+    <plurals name="staging_files_count">
+        <item quantity="one">%1$d temporary file</item>
+        <item quantity="other">%1$d temporary files</item>
+    </plurals>
+    <string name="staging_files_message">SoundMemo found %1$s (%2$s) left after an interrupted recording. These files are not in your library. Delete them to free space, or keep them until the next app launch.</string>
+    <string name="staging_files_delete">Delete files</string>
+    <string name="staging_files_keep">Keep</string>
+    <plurals name="staging_files_delete_failed">
+        <item quantity="one">One file could not be deleted. You can try again or keep it.</item>
+        <item quantity="other">%1$d files could not be deleted. You can try again or keep them.</item>
+    </plurals>
 </resources>

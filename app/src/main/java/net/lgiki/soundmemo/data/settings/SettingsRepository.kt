@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import net.lgiki.soundmemo.data.storage.DEFAULT_RECORDING_NAME_TEMPLATE
+import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
 import net.lgiki.soundmemo.domain.recorder.AudioInputPreference
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 
@@ -125,8 +126,9 @@ class SettingsRepository(context: Context) {
         dataStore.edit { it[RECORDING_NAME_TEMPLATE] = template.trim().ifBlank { DEFAULT_RECORDING_NAME_TEMPLATE } }
     }
 
-    private fun normalizeRecordingNameTemplate(template: String?): String = when (template) {
-        null, OLD_DEFAULT_RECORDING_NAME_TEMPLATE -> DEFAULT_RECORDING_NAME_TEMPLATE
+    private fun normalizeRecordingNameTemplate(template: String?): String = when {
+        template == null || template == OLD_DEFAULT_RECORDING_NAME_TEMPLATE -> DEFAULT_RECORDING_NAME_TEMPLATE
+        !RecordingNameTemplate.isValid(template) -> DEFAULT_RECORDING_NAME_TEMPLATE
         else -> template
     }
 

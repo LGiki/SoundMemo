@@ -67,8 +67,9 @@ internal class MediaRecorderBackend(
         recorder.resume()
     }
 
-    override fun stop() {
+    override fun stop(): List<RecordedOutput> {
         recorder.stop()
+        return listOf(RecordedOutput(file = file))
     }
 
     override fun release() {

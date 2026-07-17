@@ -35,6 +35,7 @@ import net.lgiki.soundmemo.SoundMemoApplication
 import net.lgiki.soundmemo.data.storage.GeneratedRecordingName
 import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
 import net.lgiki.soundmemo.data.storage.RecordingSaveResult
+import net.lgiki.soundmemo.data.repository.RecordingPartSave
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 import net.lgiki.soundmemo.domain.recorder.RecordingLocation
 import net.lgiki.soundmemo.domain.recorder.RecordingLocationProvider
@@ -46,6 +47,7 @@ import net.lgiki.soundmemo.service.audio.AudioRecordingBackend
 import net.lgiki.soundmemo.service.audio.MediaRecorderBackend
 import net.lgiki.soundmemo.service.audio.PcmRecordingBackend
 import net.lgiki.soundmemo.service.audio.RecordingChannels
+import net.lgiki.soundmemo.service.audio.RecordedOutput
 import net.lgiki.soundmemo.util.formatDuration
 import net.lgiki.soundmemo.util.wrapWithLocale
 
@@ -157,29 +159,35 @@ class RecordingService : LifecycleService() {
                     extension = recordingFormat.extension,
                 )
                 val createdFile = container.recordingStorage.createTempOutputFile(generatedName)
-                val createdRecorder = if (recordingFormat.usesPcmRecorder) {
-                    PcmRecordingBackend(
-                        context = this@RecordingService,
-                        file = createdFile,
-                        format = recordingFormat,
-                        bitrate = recordingBitrate,
-                        sampleRate = recordingSampleRate,
-                        channels = recordingChannels,
-                        preferredDevice = preferredAudioDevice,
-                    )
-                } else {
-                    MediaRecorderBackend(
-                        context = this@RecordingService,
-                        file = createdFile,
-                        format = recordingFormat,
-                        bitrate = recordingBitrate,
-                        sampleRate = recordingSampleRate,
-                        channels = recordingChannels,
-                        location = location,
-                        writeLocationToMediaFile = settings.writeLocationToMediaFile,
-                        preferredDevice = preferredAudioDevice,
-                    )
+                val startedBackend = startWithMonoFallback(
+                    requestedChannels = recordingChannels,
+                    beforeRetry = { createdFile.delete() },
+                ) { activeChannels ->
+                    if (recordingFormat.usesPcmRecorder) {
+                        PcmRecordingBackend(
+                            context = this@RecordingService,
+                            file = createdFile,
+                            format = recordingFormat,
+                            bitrate = recordingBitrate,
+                            sampleRate = recordingSampleRate,
+                            channels = activeChannels,
+                            preferredDevice = preferredAudioDevice,
+                        )
+                    } else {
+                        MediaRecorderBackend(
+                            context = this@RecordingService,
+                            file = createdFile,
+                            format = recordingFormat,
+                            bitrate = recordingBitrate,
+                            sampleRate = recordingSampleRate,
+                            channels = activeChannels,
+                            location = location,
+                            writeLocationToMediaFile = settings.writeLocationToMediaFile,
+                            preferredDevice = preferredAudioDevice,
+                        )
+                    }
                 }
+                val createdRecorder = startedBackend.backend
                 file = createdFile
                 recordingBackend = createdRecorder
                 recorder = createdRecorder
@@ -190,7 +198,6 @@ class RecordingService : LifecycleService() {
                 outputBitrate = recordingBitrate
                 outputSampleRate = recordingSampleRate
                 recordingLocation = location
-                createdRecorder.start()
                 started = true
                 startedAt = SystemClock.elapsedRealtime()
                 pausedAt = 0L
@@ -200,6 +207,11 @@ class RecordingService : LifecycleService() {
                         status = RecorderStatus.Recording,
                         preferredAudioInput = preferredAudioInput,
                         actualAudioInput = createdRecorder.routedDevice,
+                        message = if (startedBackend.fellBackToMono) {
+                            getString(R.string.recorder_stereo_fallback_message)
+                        } else {
+                            null
+                        },
                     ),
                 )
                 startTicker()
@@ -325,39 +337,64 @@ class RecordingService : LifecycleService() {
                 val activeSampleRate = outputSampleRate
                 val elapsed = currentElapsed()
                 val location = recordingLocation
-                var saveResult: RecordingSaveResult? = null
+                val saveResults = mutableListOf<RecordingSaveResult>()
+                var recordedOutputs: List<RecordedOutput> = emptyList()
                 var savedConfirmationMessage: String? = null
                 try {
-                    activeRecorder.stop()
+                    recordedOutputs = activeRecorder.stop().sortedBy { it.partIndex }
                     cleanupRecorder()
-                    if (save && file != null && generatedName != null && file.exists() && file.length() > 0) {
+                    if (save && generatedName != null && recordedOutputs.isNotEmpty()) {
+                        check(recordedOutputs.all { it.file.exists() && it.file.length() > 0L }) {
+                            "One or more recording parts are missing"
+                        }
                         val settings = container.settingsRepository.settings.first()
                         val recordingFormat = activeFormat ?: settings.recordingFormat
-                        saveResult = container.recordingStorage.publishRecording(
-                            tempFile = file,
-                            generatedName = generatedName,
-                            location = settings.recordingStorageLocation,
-                            format = recordingFormat.storageValue,
-                            customFolderUri = settings.customRecordingFolderUri,
-                        )
-                        val id = container.recordingRepository.addFromSaveResult(
-                            saveResult = requireNotNull(saveResult),
-                            name = displayName.orEmpty(),
-                            durationMs = elapsed,
+                        val partCount = recordedOutputs.size
+                        val parts = recordedOutputs.map { output ->
+                            val partName = RecordingNameTemplate.forPart(generatedName, output.partIndex)
+                            val result = container.recordingStorage.publishRecording(
+                                tempFile = output.file,
+                                generatedName = partName,
+                                location = settings.recordingStorageLocation,
+                                format = recordingFormat.storageValue,
+                                customFolderUri = settings.customRecordingFolderUri,
+                            ).also(saveResults::add)
+                            RecordingPartSave(
+                                saveResult = result,
+                                name = if (partCount > 1) {
+                                    getString(
+                                        R.string.recorder_recording_part_name,
+                                        displayName.orEmpty(),
+                                        output.partIndex,
+                                    )
+                                } else {
+                                    displayName.orEmpty()
+                                },
+                                durationMs = output.durationMs ?: elapsed,
+                            )
+                        }
+                        val ids = container.recordingRepository.addFromSaveResults(
+                            parts = parts,
                             bitrate = activeBitrate.takeIf { it > 0 } ?: recordingFormat.bitrateFor(settings.bitrate),
                             sampleRate = activeSampleRate.takeIf { it > 0 } ?: recordingFormat.sampleRateFor(settings.sampleRate),
                             format = recordingFormat.storageValue,
                             location = location,
                         )
-                        val savedMessage = if (saveResult.fellBackToAppFiles) {
+                        val savedMessage = if (saveResults.any { it.fellBackToAppFiles }) {
                             getString(R.string.recorder_saved_to_app_files_message)
+                        } else if (partCount > 1) {
+                            resources.getQuantityString(
+                                R.plurals.recorder_saved_parts_message,
+                                partCount,
+                                partCount,
+                            )
                         } else {
                             getString(R.string.recorder_saved_message)
                         }
                         RecordingStateHolder.update(
                             RecorderUiState(
                                 status = RecorderStatus.Saved,
-                                lastSavedId = id,
+                                lastSavedId = ids.firstOrNull(),
                                 message = if (fromNotification) null else savedMessage,
                             ),
                         )
@@ -365,12 +402,14 @@ class RecordingService : LifecycleService() {
                             savedConfirmationMessage = savedMessage
                         }
                     } else {
+                        recordedOutputs.forEach { it.file.delete() }
                         file?.delete()
                         RecordingStateHolder.update(RecorderUiState(status = RecorderStatus.Idle))
                     }
                 } catch (exception: Exception) {
                     cleanupRecorder()
-                    saveResult?.let { container.recordingStorage.deletePublishedRecording(it) }
+                    saveResults.forEach(container.recordingStorage::deletePublishedRecording)
+                    recordedOutputs.forEach { it.file.delete() }
                     file?.delete()
                     RecordingStateHolder.update(
                         RecorderUiState(
@@ -610,5 +649,37 @@ class RecordingService : LifecycleService() {
             Intent(context, RecordingService::class.java).setAction(action).apply {
                 putExtra(EXTRA_RECORD_LOCATION, recordLocation)
             }
+    }
+}
+
+internal data class StartedAudioBackend(
+    val backend: AudioRecordingBackend,
+    val fellBackToMono: Boolean,
+)
+
+internal fun startWithMonoFallback(
+    requestedChannels: RecordingChannels,
+    beforeRetry: () -> Unit = {},
+    createBackend: (RecordingChannels) -> AudioRecordingBackend,
+): StartedAudioBackend {
+    val firstBackend = createBackend(requestedChannels)
+    try {
+        firstBackend.start()
+        return StartedAudioBackend(firstBackend, fellBackToMono = false)
+    } catch (firstFailure: Throwable) {
+        runCatching { firstBackend.release() }
+        if (requestedChannels.channelCount != RecordingChannels.Stereo.channelCount) {
+            throw firstFailure
+        }
+        beforeRetry()
+        val monoBackend = createBackend(RecordingChannels.Mono)
+        try {
+            monoBackend.start()
+            return StartedAudioBackend(monoBackend, fellBackToMono = true)
+        } catch (monoFailure: Throwable) {
+            runCatching { monoBackend.release() }
+            monoFailure.addSuppressed(firstFailure)
+            throw monoFailure
+        }
     }
 }

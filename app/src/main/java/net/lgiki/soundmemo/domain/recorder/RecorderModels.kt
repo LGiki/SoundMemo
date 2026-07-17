@@ -11,6 +11,22 @@ enum class RecorderStatus {
     Error,
 }
 
+internal fun shouldKeepScreenAwake(enabled: Boolean, status: RecorderStatus): Boolean =
+    enabled && isRecorderWorkflowActive(status)
+
+internal fun isRecorderWorkflowActive(status: RecorderStatus): Boolean =
+    status in setOf(
+        RecorderStatus.Recording,
+        RecorderStatus.Paused,
+        RecorderStatus.Saving,
+    )
+
+internal fun consumeRecorderMessage(state: RecorderUiState): RecorderUiState =
+    state.copy(
+        status = if (state.status == RecorderStatus.Saved) RecorderStatus.Idle else state.status,
+        message = null,
+    )
+
 data class RecorderUiState(
     val status: RecorderStatus = RecorderStatus.Idle,
     val elapsedMs: Long = 0,

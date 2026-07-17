@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RecordingDao {
-    @Query("SELECT * FROM recordings WHERE isDeleted = 0 ORDER BY createdAt DESC")
+    @Query("SELECT * FROM recordings WHERE isDeleted = 0 ORDER BY createdAt DESC, id ASC")
     fun activeRecordings(): Flow<List<Recording>>
 
     @Query("SELECT * FROM recordings WHERE isDeleted = 1 ORDER BY deletedAt DESC")
@@ -23,6 +23,9 @@ interface RecordingDao {
 
     @Insert
     suspend fun insert(recording: Recording): Long
+
+    @Insert
+    suspend fun insertAll(recordings: List<Recording>): List<Long>
 
     @Update
     suspend fun update(recording: Recording)
