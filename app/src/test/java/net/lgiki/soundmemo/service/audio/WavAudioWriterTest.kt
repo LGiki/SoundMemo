@@ -3,9 +3,45 @@ package net.lgiki.soundmemo.service.audio
 import java.nio.file.Files
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class WavAudioWriterTest {
+    @Test
+    fun pcmFrameBuffer_carriesOddStereoSampleIntoNextRead() {
+        val buffer = PcmFrameBuffer(channelCount = 2)
+
+        val (first, firstCount) = buffer.takeCompleteFrames(shortArrayOf(1, 2, 3), 3)
+        val (second, secondCount) = buffer.takeCompleteFrames(shortArrayOf(4, 5, 6), 3)
+
+        assertEquals(2, firstCount)
+        assertArrayEquals(shortArrayOf(1, 2), first.copyOf(firstCount))
+        assertEquals(4, secondCount)
+        assertArrayEquals(shortArrayOf(3, 4, 5, 6), second.copyOf(secondCount))
+    }
+
+    @Test
+    fun finish_withoutCompleteFrames_discardsEmptyWavFile() {
+        val directory = Files.createTempDirectory("soundmemo-empty-wav").toFile()
+        try {
+            val firstFile = directory.resolve("recording.wav")
+            val writer = PcmRecordingBackend.WavAudioWriter(
+                firstFile = firstFile,
+                sampleRate = 44_100,
+                channelCount = 2,
+                partFile = { part -> recordingPartFile(firstFile, part) },
+                maxDataBytes = 8,
+            )
+
+            val outputs = writer.finish()
+
+            assertEquals(emptyList<RecordedOutput>(), outputs)
+            assertFalse(firstFile.exists())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
     @Test
     fun write_splitsAtFrameBoundaryWithoutDroppingSamples() {
         val directory = Files.createTempDirectory("soundmemo-wav-split").toFile()

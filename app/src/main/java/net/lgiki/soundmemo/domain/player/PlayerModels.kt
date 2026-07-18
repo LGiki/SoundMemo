@@ -11,3 +11,23 @@ data class PlayerUiState(
     val error: String? = null,
 )
 
+internal fun unavailableRecordingState(
+    previous: PlayerUiState,
+    recording: Recording,
+    error: String,
+): PlayerUiState = previous.copy(
+    recording = recording,
+    isPlaying = false,
+    positionMs = 0,
+    durationMs = recording.durationMs,
+    error = error,
+)
+
+internal fun selectedRecordingState(previous: PlayerUiState, recording: Recording): PlayerUiState =
+    previous.copy(
+        recording = recording,
+        isPlaying = false,
+        positionMs = 0,
+        durationMs = recording.durationMs,
+        error = null,
+    )

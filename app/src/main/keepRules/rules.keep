@@ -4,6 +4,12 @@
 # For more details, see
 #   https://d.android.com/r/tools/r8/keep-rules
 
+# The bundled MP3 encoder resolves these native methods by their generated JNI names.
+# Keep both the class and method names stable when the release build is minified.
+-keep class net.lgiki.soundmemo.service.audio.LameMp3Encoder {
+    native <methods>;
+}
+
 # If your project uses WebView with JS, uncomment the following
 # and specify the fully qualified class name to the JavaScript interface
 # class:

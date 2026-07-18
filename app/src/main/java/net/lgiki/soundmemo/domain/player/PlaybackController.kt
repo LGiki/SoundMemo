@@ -66,10 +66,15 @@ class PlaybackController(
     fun play(recording: Recording) {
         val uri = recordingStorage.playbackUri(recording)
         if (uri == null) {
-            mutableState.value = mutableState.value.copy(error = appContext.getString(net.lgiki.soundmemo.R.string.playback_file_missing))
+            player.stop()
+            mutableState.value = unavailableRecordingState(
+                previous = mutableState.value,
+                recording = recording,
+                error = appContext.getString(net.lgiki.soundmemo.R.string.playback_file_missing),
+            )
             return
         }
-        mutableState.value = mutableState.value.copy(recording = recording, error = null, durationMs = recording.durationMs)
+        mutableState.value = selectedRecordingState(mutableState.value, recording)
         player.setMediaItem(MediaItem.fromUri(uri))
         player.prepare()
         player.play()

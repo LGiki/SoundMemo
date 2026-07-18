@@ -268,6 +268,10 @@ internal class PcmRecordingBackend(
             output.seek(0)
             WavHeader.write(output, sampleRate, channelCount, dataBytes)
             output.close()
+            if (dataBytes == 0L) {
+                activeFile.delete()
+                return
+            }
             val frameCount = dataBytes / blockAlign
             completed += RecordedOutput(
                 file = activeFile,
@@ -286,22 +290,32 @@ internal class PcmRecordingBackend(
         private val file: File,
         sampleRate: Int,
         bitrate: Int,
-        channelCount: Int,
+        private val channelCount: Int,
     ) : PcmAudioWriter {
         private val output = FileOutputStream(file)
         private val encoder = LameMp3Encoder(sampleRate = sampleRate, bitrate = bitrate, channelCount = channelCount)
-        private var finished = false
+        private val frameBuffer = PcmFrameBuffer(channelCount)
+        private var completedOutputs: List<RecordedOutput>? = null
+        private var encodedFrameCount = 0L
 
         override fun write(samples: ShortArray, sampleCount: Int) {
-            val bytes = encoder.encode(samples, sampleCount)
+            val (completeSamples, completeSampleCount) = frameBuffer.takeCompleteFrames(samples, sampleCount)
+            if (completeSampleCount == 0) return
+            val bytes = encoder.encode(completeSamples, completeSampleCount)
             if (bytes.isNotEmpty()) {
                 output.write(bytes)
             }
+            encodedFrameCount += completeSampleCount / channelCount
         }
 
         override fun finish(): List<RecordedOutput> {
-            if (finished) return listOf(RecordedOutput(file = file))
-            finished = true
+            completedOutputs?.let { return it }
+            if (encodedFrameCount == 0L) {
+                encoder.close()
+                output.close()
+                file.delete()
+                return emptyList<RecordedOutput>().also { completedOutputs = it }
+            }
             runCatching {
                 val bytes = encoder.flush()
                 if (bytes.isNotEmpty()) {
@@ -311,7 +325,7 @@ internal class PcmRecordingBackend(
                 encoder.close()
                 output.close()
             }.getOrThrow()
-            return listOf(RecordedOutput(file = file))
+            return listOf(RecordedOutput(file = file)).also { completedOutputs = it }
         }
 
         override fun close() {
@@ -330,4 +344,30 @@ internal fun recordingPartFile(firstFile: File, partIndex: Int): File {
     if (partIndex == 1) return firstFile
     val suffix = "_part${partIndex.toString().padStart(2, '0')}"
     return File(firstFile.parentFile, "${firstFile.nameWithoutExtension}$suffix.${firstFile.extension}")
+}
+
+/** Retains incomplete interleaved PCM frames so an audio read never loses stereo data. */
+internal class PcmFrameBuffer(private val channelCount: Int) {
+    private var pendingSample: Short? = null
+
+    init {
+        require(channelCount in 1..2) { "Only mono and stereo PCM are supported" }
+    }
+
+    fun takeCompleteFrames(samples: ShortArray, sampleCount: Int): Pair<ShortArray, Int> {
+        val validSampleCount = sampleCount.coerceIn(0, samples.size)
+        if (channelCount == 1) return samples to validSampleCount
+        if (pendingSample == null && validSampleCount % channelCount == 0) {
+            return samples to validSampleCount
+        }
+
+        val combined = ShortArray(validSampleCount + if (pendingSample == null) 0 else 1)
+        var targetIndex = 0
+        pendingSample?.let { combined[targetIndex++] = it }
+        samples.copyInto(combined, destinationOffset = targetIndex, endIndex = validSampleCount)
+
+        val completeSampleCount = combined.size - combined.size % channelCount
+        pendingSample = combined.getOrNull(completeSampleCount)
+        return combined to completeSampleCount
+    }
 }
