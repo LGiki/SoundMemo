@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.SoundMemoContainer
 import net.lgiki.soundmemo.data.model.Recording
@@ -39,7 +41,9 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
                 .map { it.recycleRetentionDays }
                 .distinctUntilChanged()
                 .collect { retentionDays ->
-                    container.recordingRepository.purgeExpired(retentionDays, container.recordingStorage::deleteRecording)
+                    withContext(Dispatchers.IO) {
+                        container.recordingRepository.purgeExpired(retentionDays, container.recordingStorage::deleteRecording)
+                    }
                 }
         }
     }
@@ -89,7 +93,9 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
 
     fun deletePermanently(id: Long) {
         viewModelScope.launch {
-            container.recordingRepository.deletePermanently(id, container.recordingStorage::deleteRecording)
+            withContext(Dispatchers.IO) {
+                container.recordingRepository.deletePermanently(id, container.recordingStorage::deleteRecording)
+            }
         }
     }
 

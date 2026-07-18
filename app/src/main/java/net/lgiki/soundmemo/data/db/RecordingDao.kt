@@ -21,6 +21,13 @@ interface RecordingDao {
     @Query("SELECT * FROM recordings WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): Recording?
 
+    @Query(
+        "SELECT COUNT(*) FROM recordings WHERE storageType = :storageType " +
+            "AND ((:storageUri IS NOT NULL AND storageUri = :storageUri) " +
+            "OR (:storageUri IS NULL AND filePath = :filePath))",
+    )
+    suspend fun countByStorageLocation(storageType: String, storageUri: String?, filePath: String): Int
+
     @Insert
     suspend fun insert(recording: Recording): Long
 

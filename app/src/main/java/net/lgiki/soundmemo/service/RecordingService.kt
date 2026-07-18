@@ -340,6 +340,7 @@ class RecordingService : LifecycleService() {
                 val saveResults = mutableListOf<RecordingSaveResult>()
                 var recordedOutputs: List<RecordedOutput> = emptyList()
                 var savedConfirmationMessage: String? = null
+                var metadataCommitted = false
                 try {
                     recordedOutputs = activeRecorder.stop().sortedBy { it.partIndex }
                     cleanupRecorder()
@@ -358,7 +359,10 @@ class RecordingService : LifecycleService() {
                                 location = settings.recordingStorageLocation,
                                 format = recordingFormat.storageValue,
                                 customFolderUri = settings.customRecordingFolderUri,
-                            ).also(saveResults::add)
+                            ).also {
+                                container.recordingStorage.markPublicationPending(it)
+                                saveResults += it
+                            }
                             RecordingPartSave(
                                 saveResult = result,
                                 name = if (partCount > 1) {
@@ -380,6 +384,8 @@ class RecordingService : LifecycleService() {
                             format = recordingFormat.storageValue,
                             location = location,
                         )
+                        metadataCommitted = true
+                        runCatching { container.recordingStorage.removePendingPublications(saveResults) }
                         val savedMessage = if (saveResults.any { it.fellBackToAppFiles }) {
                             getString(R.string.recorder_saved_to_app_files_message)
                         } else if (partCount > 1) {
@@ -408,7 +414,9 @@ class RecordingService : LifecycleService() {
                     }
                 } catch (exception: Exception) {
                     cleanupRecorder()
-                    saveResults.forEach(container.recordingStorage::deletePublishedRecording)
+                    if (!metadataCommitted) {
+                        saveResults.forEach(container.recordingStorage::deletePublishedRecording)
+                    }
                     recordedOutputs.forEach { it.file.delete() }
                     file?.let(::deleteStagedRecordingOutputs)
                     RecordingStateHolder.update(

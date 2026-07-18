@@ -11,10 +11,12 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import android.util.AtomicFile
 import java.io.File
 import java.io.FileNotFoundException
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import java.util.Base64
 import java.util.UUID
 import net.lgiki.soundmemo.data.model.Recording
 import net.lgiki.soundmemo.data.model.RecordingStorageType
@@ -25,6 +27,9 @@ class RecordingStorage internal constructor(
     uriOperations: RecordingUriOperations = AndroidRecordingUriOperations(context),
 ) {
     private val uriDeleter = RecordingUriDeleter(uriOperations)
+    private val pendingPublications = PendingPublicationJournal(
+        File(context.filesDir, "pending_recording_publications"),
+    )
     private val appRecordingsDir: File
         get() = File(
             context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
@@ -156,6 +161,20 @@ class RecordingStorage internal constructor(
             RecordingStorageType.File -> deleteFile(saveResult.filePath)
         }
 
+    /**
+     * Records a published file until its Room metadata has been committed. This lets the next
+     * launch remove untracked files if the process dies while a recording is being saved.
+     */
+    fun markPublicationPending(saveResult: RecordingSaveResult) {
+        pendingPublications.add(saveResult)
+    }
+
+    fun pendingPublications(): List<RecordingSaveResult> = pendingPublications.read()
+
+    fun removePendingPublications(saveResults: Collection<RecordingSaveResult>) {
+        pendingPublications.remove(saveResults)
+    }
+
     fun deleteFile(path: String): Boolean {
         val file = File(path)
         return !file.exists() || file.delete()
@@ -207,8 +226,10 @@ class RecordingStorage internal constructor(
             } ?: error("Could not open media item")
             values.clear()
             values.put(MediaStore.Audio.Media.IS_PENDING, 0)
-            resolver.update(uri, values, null, null)
-            tempFile.delete()
+            check(resolver.update(uri, values, null, null) == 1) {
+                "Could not finalize media item"
+            }
+            check(tempFile.delete()) { "Could not remove temporary recording: ${tempFile.absolutePath}" }
             return RecordingSaveResult(
                 storageType = RecordingStorageType.MediaStore.storageValue,
                 filePath = deviceMusicPath(generatedName.fileName),
@@ -244,7 +265,7 @@ class RecordingStorage internal constructor(
             resolver.openOutputStream(uri, "w")?.use { output ->
                 tempFile.inputStream().use { input -> input.copyTo(output) }
             } ?: error("Could not open document")
-            tempFile.delete()
+            check(tempFile.delete()) { "Could not remove temporary recording: ${tempFile.absolutePath}" }
             return RecordingSaveResult(
                 storageType = RecordingStorageType.ContentUri.storageValue,
                 filePath = documentUriPath(uri.toString()).orEmpty(),
@@ -352,6 +373,67 @@ data class RecordingSaveResult(
     val fileSizeBytes: Long,
     val fellBackToAppFiles: Boolean,
 )
+
+private class PendingPublicationJournal(private val file: File) {
+    private val atomicFile = AtomicFile(file)
+    private val lock = Any()
+
+    fun add(saveResult: RecordingSaveResult) = synchronized(lock) {
+        write(readLocked() + saveResult)
+    }
+
+    fun read(): List<RecordingSaveResult> = synchronized(lock) { readLocked() }
+
+    fun remove(results: Collection<RecordingSaveResult>) = synchronized(lock) {
+        val remaining = readLocked().filterNot { it in results }
+        if (remaining.isEmpty()) {
+            atomicFile.delete()
+        } else {
+            write(remaining)
+        }
+    }
+
+    private fun readLocked(): List<RecordingSaveResult> = runCatching {
+        if (!file.exists()) return emptyList()
+        atomicFile.openRead().bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
+            lines.mapNotNull(::decode).toList()
+        }
+    }.getOrDefault(emptyList())
+
+    private fun write(results: List<RecordingSaveResult>) {
+        val output = atomicFile.startWrite()
+        try {
+            val contents = results.distinct().joinToString(separator = "\n", postfix = "\n", transform = ::encode)
+            output.write(contents.toByteArray(StandardCharsets.UTF_8))
+            output.flush()
+            atomicFile.finishWrite(output)
+        } catch (exception: Exception) {
+            atomicFile.failWrite(output)
+            throw exception
+        }
+    }
+
+    private fun encode(value: RecordingSaveResult): String = listOf(
+        value.storageType,
+        value.filePath,
+        value.storageUri.orEmpty(),
+        value.fileSizeBytes.toString(),
+        value.fellBackToAppFiles.toString(),
+    ).joinToString("\t") { field -> Base64.getUrlEncoder().encodeToString(field.toByteArray(StandardCharsets.UTF_8)) }
+
+    private fun decode(line: String): RecordingSaveResult? = runCatching {
+        val fields = line.split('\t')
+        require(fields.size == 5)
+        val decoded = fields.map { field -> String(Base64.getUrlDecoder().decode(field), StandardCharsets.UTF_8) }
+        RecordingSaveResult(
+            storageType = decoded[0],
+            filePath = decoded[1],
+            storageUri = decoded[2].ifBlank { null },
+            fileSizeBytes = decoded[3].toLong(),
+            fellBackToAppFiles = decoded[4].toBooleanStrict(),
+        )
+    }.getOrNull()
+}
 
 class AbandonedRecordingFiles internal constructor(
     internal val files: List<File>,

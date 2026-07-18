@@ -21,6 +21,15 @@ class SoundMemoApplication : Application() {
         applicationScope.launch {
             updateLocale(container.settingsRepository.settings.first().locale)
         }
+        applicationScope.launch(Dispatchers.IO) {
+            val pending = container.recordingStorage.pendingPublications()
+            pending.forEach { saveResult ->
+                if (!container.recordingRepository.hasSaveResult(saveResult)) {
+                    container.recordingStorage.deletePublishedRecording(saveResult)
+                }
+            }
+            container.recordingStorage.removePendingPublications(pending)
+        }
     }
 
     fun updateLocale(tag: String) {

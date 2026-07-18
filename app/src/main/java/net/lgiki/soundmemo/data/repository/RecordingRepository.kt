@@ -92,6 +92,13 @@ class RecordingRepository(private val dao: RecordingDao) {
 
     suspend fun get(id: Long): Recording? = dao.getById(id)
 
+    suspend fun hasSaveResult(saveResult: RecordingSaveResult): Boolean =
+        dao.countByStorageLocation(
+            storageType = saveResult.storageType,
+            storageUri = saveResult.storageUri,
+            filePath = saveResult.filePath,
+        ) > 0
+
     suspend fun rename(id: Long, name: String) {
         dao.getById(id)?.let {
             dao.update(it.copy(name = name.trim().ifBlank { it.name }, updatedAt = System.currentTimeMillis()))
