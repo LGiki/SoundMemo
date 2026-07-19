@@ -1,6 +1,8 @@
 package net.lgiki.soundmemo.ui.recorder
 
 import android.widget.Toast
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -113,7 +116,6 @@ fun RecorderScreen(
         bottomBar = {
             RecorderActionBar {
                 RecorderControls(
-                    status = state.status,
                     presentedStatus = presentedStatus,
                     onRecordRequest = onRecordRequest,
                     onPause = { viewModel.pause(context) },
@@ -190,7 +192,7 @@ private fun RecorderActionBar(content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Box(modifier = Modifier.widthIn(max = 1_200.dp).fillMaxWidth()) {
@@ -557,7 +559,6 @@ private fun DiscardRecordingDialog(
 
 @Composable
 private fun RecorderControls(
-    status: RecorderStatus,
     presentedStatus: RecorderStatus,
     onRecordRequest: () -> Unit,
     onPause: () -> Unit,
@@ -565,82 +566,124 @@ private fun RecorderControls(
     onStop: () -> Unit,
     onDiscardClick: () -> Unit,
 ) {
+    val controlMode = when (presentedStatus) {
+        RecorderStatus.Idle, RecorderStatus.Saved, RecorderStatus.Error -> RecorderControlMode.Ready
+        RecorderStatus.Starting -> RecorderControlMode.Starting
+        RecorderStatus.Recording, RecorderStatus.Paused -> RecorderControlMode.Active
+        RecorderStatus.Saving -> RecorderControlMode.Saving
+    }
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (status == RecorderStatus.Starting && presentedStatus != RecorderStatus.Starting) {
-                Spacer(Modifier.size(96.dp))
-                return@Row
-            }
-            when (presentedStatus) {
-                RecorderStatus.Idle, RecorderStatus.Saved, RecorderStatus.Error -> {
-                    LargeFloatingActionButton(
-                        onClick = onRecordRequest,
-                        modifier = Modifier.size(96.dp),
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError,
-                        elevation = FloatingActionButtonDefaults.elevation(
-                            defaultElevation = 0.dp,
-                            pressedElevation = 0.dp,
-                            focusedElevation = 0.dp,
-                            hoveredElevation = 0.dp,
-                        ),
-                    ) {
-                        Icon(
-                            Icons.Default.Mic,
-                            contentDescription = stringResource(R.string.recorder_start),
-                            modifier = Modifier.size(42.dp),
-                        )
+        Crossfade(
+            targetState = controlMode,
+            modifier = Modifier
+                .width(152.dp)
+                .height(96.dp),
+            animationSpec = tween(durationMillis = 140),
+            label = "Recorder controls",
+        ) { targetMode ->
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                when (targetMode) {
+                    RecorderControlMode.Ready -> {
+                        LargeFloatingActionButton(
+                            onClick = onRecordRequest,
+                            modifier = Modifier.size(96.dp),
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                            elevation = FloatingActionButtonDefaults.elevation(
+                                defaultElevation = 0.dp,
+                                pressedElevation = 0.dp,
+                                focusedElevation = 0.dp,
+                                hoveredElevation = 0.dp,
+                            ),
+                        ) {
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = stringResource(R.string.recorder_start),
+                                modifier = Modifier.size(42.dp),
+                            )
+                        }
                     }
-                }
-                RecorderStatus.Starting -> {
-                    Box(
-                        modifier = Modifier.size(96.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                    RecorderControlMode.Starting -> {
                         Text(
                             text = stringResource(R.string.notification_text_starting),
                             style = MaterialTheme.typography.titleMedium,
                             textAlign = TextAlign.Center,
                         )
                     }
-                }
-                RecorderStatus.Recording -> {
-                    TransportButton(
-                        onClick = onPause,
-                        icon = { Icon(Icons.Default.Pause, contentDescription = stringResource(R.string.recorder_pause)) },
-                    )
-                    StopButton(onClick = onStop)
-                }
-                RecorderStatus.Paused -> {
-                    TransportButton(
-                        onClick = onResume,
-                        icon = { Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.recorder_resume)) },
-                    )
-                    StopButton(onClick = onStop)
-                }
-                RecorderStatus.Saving -> {
-                    Text(
-                        text = stringResource(R.string.recorder_saving_audio),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
+                    RecorderControlMode.Active -> {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (presentedStatus == RecorderStatus.Paused) {
+                                TransportButton(
+                                    onClick = onResume,
+                                    icon = {
+                                        Icon(
+                                            Icons.Default.PlayArrow,
+                                            contentDescription = stringResource(R.string.recorder_resume),
+                                        )
+                                    },
+                                )
+                            } else {
+                                TransportButton(
+                                    onClick = onPause,
+                                    icon = {
+                                        Icon(
+                                            Icons.Default.Pause,
+                                            contentDescription = stringResource(R.string.recorder_pause),
+                                        )
+                                    },
+                                )
+                            }
+                            StopButton(onClick = onStop)
+                        }
+                    }
+                    RecorderControlMode.Saving -> {
+                        Text(
+                            text = stringResource(R.string.recorder_saving_audio),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
                 }
             }
         }
-        if (presentedStatus == RecorderStatus.Recording || presentedStatus == RecorderStatus.Paused) {
-            OutlinedButton(onClick = onDiscardClick) {
-                Icon(Icons.Default.Delete, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
-                Text(stringResource(R.string.recorder_discard))
+        Crossfade(
+            targetState = controlMode == RecorderControlMode.Active,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            animationSpec = tween(durationMillis = 120),
+            label = "Discard control",
+        ) { showDiscard ->
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (showDiscard) {
+                    OutlinedButton(onClick = onDiscardClick) {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text(stringResource(R.string.recorder_discard))
+                    }
+                }
             }
         }
     }
+}
+
+private enum class RecorderControlMode {
+    Ready,
+    Starting,
+    Active,
+    Saving,
 }
 
 @Composable
