@@ -25,6 +25,7 @@ class RecordingChannelFallbackTest {
 
         assertTrue(result.fellBackToMono)
         assertSame(created[1], result.backend)
+        assertEquals(RecordingChannels.Mono, result.channels)
         assertEquals(1, beforeRetryCalls)
         assertTrue(created[0].released)
         assertFalse(created[1].released)

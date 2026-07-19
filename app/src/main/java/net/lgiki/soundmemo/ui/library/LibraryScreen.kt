@@ -5,13 +5,14 @@ import android.content.ClipboardManager
 import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -45,6 +47,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,15 +57,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,6 +79,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.lgiki.soundmemo.R
+import net.lgiki.soundmemo.ui.AdaptiveContent
+import net.lgiki.soundmemo.ui.SoundMemoScaffold
 import net.lgiki.soundmemo.data.model.Recording
 import net.lgiki.soundmemo.data.model.RecordingSort
 import net.lgiki.soundmemo.data.storage.deviceMusicPath
@@ -92,7 +92,6 @@ import net.lgiki.soundmemo.util.formatFileSize
 import net.lgiki.soundmemo.util.formatPreciseDuration
 import net.lgiki.soundmemo.util.formatRecordingLocation
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     viewModel: LibraryViewModel,
@@ -101,83 +100,83 @@ fun LibraryScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val playerState by viewModel.playback.state.collectAsStateWithLifecycle()
     var propertiesRecording by remember { mutableStateOf<Recording?>(null) }
-    Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.library_title)) }) },
+    SoundMemoScaffold(
+        title = { Text(stringResource(R.string.library_title)) },
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = viewModel::setQuery,
-                label = { Text(stringResource(R.string.library_search)) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            SortRow(state.sort, viewModel::setSort)
-            if (shouldShowEmptyLibrary(state.activeCount, state.deleted.size)) {
-                EmptyLibrary(onStartRecording = onStartRecording, modifier = Modifier.weight(1f))
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (shouldShowNoSearchResults(state.query, state.recordings.size, state.activeCount)) {
-                        item {
-                            NoSearchResults()
+        AdaptiveContent(padding = padding, maxContentWidth = 960.dp) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                OutlinedTextField(
+                    value = state.query,
+                    onValueChange = viewModel::setQuery,
+                    label = { Text(stringResource(R.string.library_search)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.large,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SortRow(state.sort, viewModel::setSort)
+                if (shouldShowEmptyLibrary(state.activeCount, state.deleted.size)) {
+                    EmptyLibrary(onStartRecording = onStartRecording, modifier = Modifier.weight(1f))
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (shouldShowNoSearchResults(state.query, state.recordings.size, state.activeCount)) {
+                            item {
+                                NoSearchResults()
+                            }
                         }
-                    }
-                    items(state.recordings, key = { it.id }) { recording ->
-                        val isSelected = playerState.recording?.id == recording.id
-                        RecordingItem(
-                            recording = recording,
-                            playerState = playerState.takeIf { isSelected },
-                            onPlay = {
-                                if (isSelected) {
-                                    viewModel.playback.toggle()
-                                } else {
-                                    viewModel.play(recording)
-                                }
-                            },
-                            onRename = { viewModel.rename(recording.id, it) },
-                            onProperties = { propertiesRecording = recording },
-                            onShare = { viewModel.share(it, recording) },
-                            onDelete = {
-                                if (isSelected) {
-                                    viewModel.playback.stop()
-                                }
-                                viewModel.delete(recording.id)
-                            },
-                            onSeek = viewModel.playback::seekTo,
-                            rewindSeconds = state.rewindSeconds,
-                            onSkipBack = { viewModel.playback.skipBy(-state.rewindSeconds * 1_000L) },
-                            onToggle = viewModel.playback::toggle,
-                            forwardSeconds = state.forwardSeconds,
-                            onSkipForward = { viewModel.playback.skipBy(state.forwardSeconds * 1_000L) },
-                            onSpeed = viewModel.playback::setSpeed,
-                        )
-                    }
-                    if (state.deleted.isNotEmpty()) {
-                        item {
-                            Text(
-                                stringResource(R.string.library_recycle_bin),
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(top = 16.dp, bottom = 2.dp),
-                            )
-                        }
-                        items(state.deleted, key = { "deleted-${it.id}" }) { recording ->
-                            DeletedRecordingItem(
+                        items(state.recordings, key = { it.id }) { recording ->
+                            val isSelected = playerState.recording?.id == recording.id
+                            RecordingItem(
                                 recording = recording,
-                                onRestore = { viewModel.restore(recording.id) },
-                                onDeleteForever = { viewModel.deletePermanently(recording.id) },
+                                playerState = playerState.takeIf { isSelected },
+                                onPlay = {
+                                    if (isSelected) {
+                                        viewModel.playback.toggle()
+                                    } else {
+                                        viewModel.play(recording)
+                                    }
+                                },
+                                onRename = { viewModel.rename(recording.id, it) },
+                                onProperties = { propertiesRecording = recording },
+                                onShare = { viewModel.share(it, recording) },
+                                onDelete = {
+                                    if (isSelected) {
+                                        viewModel.playback.stop()
+                                    }
+                                    viewModel.delete(recording.id)
+                                },
+                                onSeek = viewModel.playback::seekTo,
+                                rewindSeconds = state.rewindSeconds,
+                                onSkipBack = { viewModel.playback.skipBy(-state.rewindSeconds * 1_000L) },
+                                onToggle = viewModel.playback::toggle,
+                                forwardSeconds = state.forwardSeconds,
+                                onSkipForward = { viewModel.playback.skipBy(state.forwardSeconds * 1_000L) },
+                                onSpeed = viewModel.playback::setSpeed,
                             )
+                        }
+                        if (state.deleted.isNotEmpty()) {
+                            item {
+                                Text(
+                                    stringResource(R.string.library_recycle_bin),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(start = 8.dp, top = 16.dp, end = 8.dp, bottom = 2.dp),
+                                )
+                            }
+                            items(state.deleted, key = { "deleted-${it.id}" }) { recording ->
+                                DeletedRecordingItem(
+                                    recording = recording,
+                                    onRestore = { viewModel.restore(recording.id) },
+                                    onDeleteForever = { viewModel.deletePermanently(recording.id) },
+                                )
+                            }
                         }
                     }
                 }
@@ -198,19 +197,27 @@ internal fun shouldShowEmptyLibrary(activeCount: Int, deletedCount: Int): Boolea
 internal fun shouldShowNoSearchResults(query: String, filteredCount: Int, activeCount: Int): Boolean =
     query.isNotBlank() && filteredCount == 0 && activeCount > 0
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SortRow(sort: RecordingSort, onSort: (RecordingSort) -> Unit) {
-    val values = listOf(RecordingSort.Newest, RecordingSort.Oldest, RecordingSort.Name)
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        values.forEachIndexed { index, value ->
-            SegmentedButton(
+internal fun SortRow(sort: RecordingSort, onSort: (RecordingSort) -> Unit) {
+    val values = listOf(
+        RecordingSort.Newest,
+        RecordingSort.Oldest,
+        RecordingSort.Name,
+        RecordingSort.Longest,
+        RecordingSort.Shortest,
+    )
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        values.forEach { value ->
+            FilterChip(
                 selected = sort == value,
                 onClick = { onSort(value) },
-                shape = SegmentedButtonDefaults.itemShape(index, values.size),
-            ) {
-                Text(sortLabel(value), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+                label = { Text(sortLabel(value), maxLines = 1) },
+            )
         }
     }
 }
@@ -219,7 +226,7 @@ private fun SortRow(sort: RecordingSort, onSort: (RecordingSort) -> Unit) {
 private fun EmptyLibrary(onStartRecording: () -> Unit, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(
@@ -229,9 +236,21 @@ private fun EmptyLibrary(onStartRecording: () -> Unit, modifier: Modifier = Modi
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LibraryMusic,
+                    contentDescription = null,
+                    modifier = Modifier.padding(14.dp).size(28.dp),
+                )
+            }
+            Spacer(Modifier.size(16.dp))
             Text(stringResource(R.string.library_empty), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.size(12.dp))
-            OutlinedButton(onClick = onStartRecording) {
+            Spacer(Modifier.size(16.dp))
+            FilledTonalButton(onClick = onStartRecording) {
                 Text(stringResource(R.string.library_empty_action))
             }
         }
@@ -240,17 +259,27 @@ private fun EmptyLibrary(onStartRecording: () -> Unit, modifier: Modifier = Modi
 
 @Composable
 private fun NoSearchResults() {
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        Text(
-            text = stringResource(R.string.library_no_search_results),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Row(
             modifier = Modifier.padding(16.dp),
-        )
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.library_no_search_results),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -293,6 +322,7 @@ private fun RecordingItem(
             formatFileSize(recording.fileSizeBytes),
             location?.let { stringResource(R.string.recording_location_coordinates, it) },
         ).joinToString(" - "),
+        selected = playerState != null,
         onClick = onPlay,
         leading = {
             FilledTonalIconButton(onClick = onPlay, modifier = Modifier.size(44.dp)) {
@@ -575,15 +605,21 @@ private fun RecordingRow(
     metadata: String,
     modifier: Modifier = Modifier,
     muted: Boolean = false,
+    selected: Boolean = false,
     onClick: (() -> Unit)? = null,
     leading: (@Composable () -> Unit)? = null,
     trailing: @Composable () -> Unit,
     expandedContent: @Composable () -> Unit = {},
 ) {
-    val containerColor = if (muted) {
-        MaterialTheme.colorScheme.surfaceContainerLow
+    val containerColor = when {
+        selected -> MaterialTheme.colorScheme.primaryContainer
+        muted -> MaterialTheme.colorScheme.surfaceContainerLow
+        else -> MaterialTheme.colorScheme.surfaceContainer
+    }
+    val contentColor = if (selected) {
+        MaterialTheme.colorScheme.onPrimaryContainer
     } else {
-        MaterialTheme.colorScheme.surfaceContainerLowest
+        MaterialTheme.colorScheme.onSurface
     }
     val content: @Composable ColumnScope.() -> Unit = {
         Column {
@@ -595,7 +631,7 @@ private fun RecordingRow(
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                        color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else contentColor,
                     )
                 },
                 supportingContent = {
@@ -604,7 +640,11 @@ private fun RecordingRow(
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                     )
                 },
                 trailingContent = {
@@ -622,16 +662,16 @@ private fun RecordingRow(
     if (onClick == null) {
         Card(
             modifier = modifier.fillMaxWidth(),
-            colors = CardDefaults.outlinedCardColors(containerColor = containerColor),
-            border = CardDefaults.outlinedCardBorder(),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
             content = content,
         )
     } else {
         Card(
             onClick = onClick,
             modifier = modifier.fillMaxWidth(),
-            colors = CardDefaults.outlinedCardColors(containerColor = containerColor),
-            border = CardDefaults.outlinedCardBorder(),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
             content = content,
         )
     }

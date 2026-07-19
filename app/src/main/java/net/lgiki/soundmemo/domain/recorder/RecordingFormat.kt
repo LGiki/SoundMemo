@@ -45,9 +45,20 @@ enum class RecordingFormat(
 
     fun bitrateFor(configuredBitrate: Int): Int = fixedBitrate ?: configuredBitrate
 
+    fun recordedBitrateFor(configuredBitrate: Int, channelCount: Int): Int {
+        require(channelCount > 0) { "Channel count must be positive" }
+        return if (this == Wav) {
+            sampleRateFor(configuredSampleRate = 0) * PCM_BITS_PER_SAMPLE * channelCount
+        } else {
+            bitrateFor(configuredBitrate)
+        }
+    }
+
     fun sampleRateFor(configuredSampleRate: Int): Int = fixedSampleRate ?: configuredSampleRate
 
     companion object {
+        private const val PCM_BITS_PER_SAMPLE = 16
+
         fun fromStorageValue(value: String?): RecordingFormat =
             entries.firstOrNull { it.storageValue == value } ?: M4a
     }

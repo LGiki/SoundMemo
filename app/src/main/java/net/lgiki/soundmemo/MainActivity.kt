@@ -14,7 +14,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -25,6 +29,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -158,6 +164,8 @@ private data class TopLevelDestination(
     val icon: @Composable () -> Unit,
 )
 
+private val NavigationRailBreakpoint = 600.dp
+
 @Composable
 private fun SoundMemoApp(
     factory: SoundMemoViewModelFactory,
@@ -170,7 +178,9 @@ private fun SoundMemoApp(
     val stagingFilesState by recorderViewModel.stagingFilesState.collectAsStateWithLifecycle()
     var checkedForStagingFiles by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(recorderState.status, checkedForStagingFiles) {
-        if (!isRecorderWorkflowActive(recorderState.status) && !checkedForStagingFiles) {
+        if (isRecorderWorkflowActive(recorderState.status)) {
+            checkedForStagingFiles = false
+        } else if (!checkedForStagingFiles) {
             checkedForStagingFiles = true
             recorderViewModel.checkForAbandonedStagingFiles()
         }
@@ -185,32 +195,18 @@ private fun SoundMemoApp(
     val showBottomBar = destinations.any { destination ->
         currentDestination?.hierarchy?.any { it.route == destination.route } == true
     }
-    Scaffold(
-        bottomBar = {
-            if (showBottomBar) {
-                NavigationBar {
-                    destinations.forEach { destination ->
-                        NavigationBarItem(
-                            selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true,
-                            onClick = {
-                                navController.navigate(destination.route) {
-                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = destination.icon,
-                            label = { Text(destination.label) },
-                        )
-                    }
-                }
-            }
-        },
-    ) { padding ->
+    fun navigateTo(destination: TopLevelDestination) {
+        navController.navigate(destination.route) {
+            popUpTo(navController.graph.startDestinationId) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+    val content: @Composable (Modifier, Boolean) -> Unit = { modifier, parentReservesBottomNavigation ->
         NavHost(
             navController = navController,
             startDestination = "recorder",
-            modifier = Modifier.padding(padding),
+            modifier = modifier,
         ) {
             composable("recorder") {
                 val context = LocalContext.current
@@ -250,6 +246,8 @@ private fun SoundMemoApp(
             composable("settings") {
                 SettingsScreen(
                     viewModel = settingsViewModel,
+                    isCurrentDestination = currentDestination?.route == "settings",
+                    parentReservesBottomNavigation = parentReservesBottomNavigation,
                     onPrivacyClick = { navController.navigate("privacy") },
                     onThirdPartyLicensesClick = { navController.navigate("licenses") },
                 )
@@ -263,6 +261,49 @@ private fun SoundMemoApp(
                 ThirdPartyLicensesScreen(
                     onNavigateBack = { navController.popBackStack() },
                 )
+            }
+        }
+    }
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        if (maxWidth >= NavigationRailBreakpoint) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                if (showBottomBar) {
+                    NavigationRail {
+                        destinations.forEach { destination ->
+                            NavigationRailItem(
+                                selected = currentDestination?.hierarchy?.any {
+                                    it.route == destination.route
+                                } == true,
+                                onClick = { navigateTo(destination) },
+                                icon = destination.icon,
+                                label = { Text(destination.label) },
+                            )
+                        }
+                    }
+                }
+                content(Modifier.weight(1f).fillMaxSize(), false)
+            }
+        } else {
+            Scaffold(
+                contentWindowInsets = WindowInsets(0.dp),
+                bottomBar = {
+                    if (showBottomBar) {
+                        NavigationBar {
+                            destinations.forEach { destination ->
+                                NavigationBarItem(
+                                    selected = currentDestination?.hierarchy?.any {
+                                        it.route == destination.route
+                                    } == true,
+                                    onClick = { navigateTo(destination) },
+                                    icon = destination.icon,
+                                    label = { Text(destination.label) },
+                                )
+                            }
+                        }
+                    }
+                },
+            ) { padding ->
+                content(Modifier.padding(padding), true)
             }
         }
     }

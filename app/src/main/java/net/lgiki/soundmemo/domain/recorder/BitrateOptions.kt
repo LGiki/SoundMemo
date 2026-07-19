@@ -16,9 +16,9 @@ data class BitrateRange(
 
 data class BitrateOptions(
     val values: List<Int>,
-    val range: BitrateRange?,
+    val ranges: List<BitrateRange>?,
 ) {
-    val isDeviceReported: Boolean = range != null
+    val isDeviceReported: Boolean = ranges != null
 }
 
 object AacBitrateOptions {
@@ -27,17 +27,17 @@ object AacBitrateOptions {
     private val commonValues = listOf(64_000, 96_000, 128_000, 160_000, 192_000, 256_000, 320_000)
 
     fun load(): BitrateOptions {
-        val range = readDeviceAacBitrateRange()
+        val ranges = readDeviceAacBitrateRanges()
         return BitrateOptions(
-            values = valuesForRange(range),
-            range = range,
+            values = valuesForRanges(ranges),
+            ranges = ranges,
         )
     }
 
-    fun valuesForRange(range: BitrateRange?): List<Int> {
-        if (range == null) return fallbackValues
-        return commonValues.filter(range::contains).ifEmpty {
-            listOf(range.min, range.max).distinct()
+    fun valuesForRanges(ranges: List<BitrateRange>?): List<Int> {
+        if (ranges.isNullOrEmpty()) return fallbackValues
+        return commonValues.filter { value -> ranges.any { it.contains(value) } }.ifEmpty {
+            ranges.flatMap { range -> listOf(range.min, range.max) }.distinct().sorted()
         }
     }
 
@@ -45,7 +45,7 @@ object AacBitrateOptions {
         return options.minByOrNull { kotlin.math.abs(it - value) } ?: fallbackValues.first()
     }
 
-    private fun readDeviceAacBitrateRange(): BitrateRange? {
+    private fun readDeviceAacBitrateRanges(): List<BitrateRange>? {
         return try {
             val codecs = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
             codecs
@@ -54,12 +54,9 @@ object AacBitrateOptions {
                 .filter { codec -> codec.supportedTypes.any { it.equals(MediaFormat.MIMETYPE_AUDIO_AAC, ignoreCase = true) } }
                 .mapNotNull { codec -> codec.getCapabilitiesForType(MediaFormat.MIMETYPE_AUDIO_AAC).audioCapabilities?.bitrateRange }
                 .map { BitrateRange(min = it.lower, max = it.upper) }
-                .reduceOrNull { acc, range ->
-                    BitrateRange(
-                        min = minOf(acc.min, range.min),
-                        max = maxOf(acc.max, range.max),
-                    )
-                }
+                .distinct()
+                .toList()
+                .takeIf { it.isNotEmpty() }
         } catch (exception: Exception) {
             Log.w(TAG, "Failed to query AAC bitrate range", exception)
             null

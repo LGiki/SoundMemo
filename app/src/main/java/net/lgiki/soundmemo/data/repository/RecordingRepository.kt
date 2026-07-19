@@ -100,21 +100,19 @@ class RecordingRepository(private val dao: RecordingDao) {
         ) > 0
 
     suspend fun rename(id: Long, name: String) {
-        dao.getById(id)?.let {
-            dao.update(it.copy(name = name.trim().ifBlank { it.name }, updatedAt = System.currentTimeMillis()))
+        val normalized = name.trim()
+        if (normalized.isNotBlank()) {
+            dao.rename(id = id, name = normalized, updatedAt = System.currentTimeMillis())
         }
     }
 
     suspend fun moveToRecycleBin(id: Long) {
-        dao.getById(id)?.let {
-            dao.update(it.copy(isDeleted = true, deletedAt = System.currentTimeMillis(), updatedAt = System.currentTimeMillis()))
-        }
+        val now = System.currentTimeMillis()
+        dao.moveToRecycleBin(id = id, deletedAt = now, updatedAt = now)
     }
 
     suspend fun restore(id: Long) {
-        dao.getById(id)?.let {
-            dao.update(it.copy(isDeleted = false, deletedAt = null, updatedAt = System.currentTimeMillis()))
-        }
+        dao.restore(id = id, updatedAt = System.currentTimeMillis())
     }
 
     suspend fun deletePermanently(id: Long, deleteRecording: (Recording) -> Boolean) {

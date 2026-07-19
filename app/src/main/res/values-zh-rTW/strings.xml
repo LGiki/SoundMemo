@@ -41,6 +41,7 @@
     </plurals>
     <string name="recorder_saved_to_app_files_message">錄音已儲存到應用程式檔案。所選資料夾無法使用。</string>
     <string name="recorder_start_failed">無法開始錄音。</string>
+    <string name="recorder_interrupted">錄音已中斷。可復原的音訊仍保留在暫存區。</string>
     <string name="recorder_stereo_fallback_message">此輸入裝置不支援立體聲，已使用單聲道錄音。</string>
     <string name="recorder_recording_part_name">%1$s（第 %2$d 段）</string>
     <string name="recorder_audio_input_current">錄音輸入</string>

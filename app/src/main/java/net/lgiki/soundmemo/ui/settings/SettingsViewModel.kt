@@ -36,7 +36,7 @@ class SettingsViewModel(
     private val _bitrateOptions = MutableStateFlow(
         BitrateOptions(
             values = AacBitrateOptions.fallbackValues,
-            range = null,
+            ranges = null,
         ),
     )
     val bitrateOptions: StateFlow<BitrateOptions> = _bitrateOptions.asStateFlow()

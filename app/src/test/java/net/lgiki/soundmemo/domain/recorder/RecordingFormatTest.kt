@@ -35,6 +35,8 @@ class RecordingFormatTest {
         assertTrue(RecordingFormat.Wav.usesPcmRecorder)
         assertEquals(705_600, RecordingFormat.Wav.bitrateFor(128_000))
         assertEquals(44_100, RecordingFormat.Wav.sampleRateFor(48_000))
+        assertEquals(705_600, RecordingFormat.Wav.recordedBitrateFor(128_000, channelCount = 1))
+        assertEquals(1_411_200, RecordingFormat.Wav.recordedBitrateFor(128_000, channelCount = 2))
     }
 
     @Test
@@ -43,5 +45,6 @@ class RecordingFormatTest {
         assertTrue(RecordingFormat.Mp3.usesPcmRecorder)
         assertEquals(192_000, RecordingFormat.Mp3.bitrateFor(192_000))
         assertEquals(44_100, RecordingFormat.Mp3.sampleRateFor(48_000))
+        assertEquals(192_000, RecordingFormat.Mp3.recordedBitrateFor(192_000, channelCount = 2))
     }
 }

@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import net.lgiki.soundmemo.data.storage.resolvedPendingPublications
 import net.lgiki.soundmemo.util.resolveLocale
 
 class SoundMemoApplication : Application() {
@@ -22,13 +23,15 @@ class SoundMemoApplication : Application() {
             updateLocale(container.settingsRepository.settings.first().locale)
         }
         applicationScope.launch(Dispatchers.IO) {
-            val pending = container.recordingStorage.pendingPublications()
-            pending.forEach { saveResult ->
-                if (!container.recordingRepository.hasSaveResult(saveResult)) {
-                    container.recordingStorage.deletePublishedRecording(saveResult)
-                }
+            container.recordingPublicationGate.withLock {
+                val pending = container.recordingStorage.pendingPublications()
+                val resolved = resolvedPendingPublications(
+                    pending = pending,
+                    hasSaveResult = container.recordingRepository::hasSaveResult,
+                    deletePublishedRecording = container.recordingStorage::deletePublishedRecording,
+                )
+                container.recordingStorage.removePendingPublications(resolved)
             }
-            container.recordingStorage.removePendingPublications(pending)
         }
     }
 

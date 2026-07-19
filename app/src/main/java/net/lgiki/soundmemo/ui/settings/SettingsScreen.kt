@@ -8,12 +8,10 @@ import android.os.Build
 import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,19 +22,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -50,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,30 +59,33 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AudioFile
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.ColorLens
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.DriveFileRenameOutline
-import androidx.compose.material.icons.filled.EditLocationAlt
-import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.FastRewind
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.AudioFile
+import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.ColorLens
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.DriveFileRenameOutline
+import androidx.compose.material.icons.outlined.EditLocationAlt
+import androidx.compose.material.icons.outlined.FastForward
+import androidx.compose.material.icons.outlined.FastRewind
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.IconButton
@@ -90,6 +94,9 @@ import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.roundToInt
 import net.lgiki.soundmemo.R
+import net.lgiki.soundmemo.ui.AdaptiveContent
+import net.lgiki.soundmemo.ui.SingleChoiceDialog
+import net.lgiki.soundmemo.ui.SoundMemoScaffold
 import net.lgiki.soundmemo.data.settings.RecordingChannelMode
 import net.lgiki.soundmemo.data.settings.RecordingStorageLocation
 import net.lgiki.soundmemo.data.settings.ThemeMode
@@ -109,6 +116,8 @@ private const val SOURCE_REPO_URL = "https://github.com/LGiki/SoundMemo"
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
+    isCurrentDestination: Boolean,
+    parentReservesBottomNavigation: Boolean,
     onPrivacyClick: () -> Unit,
     onThirdPartyLicensesClick: () -> Unit,
 ) {
@@ -116,6 +125,10 @@ fun SettingsScreen(
     val bitrateOptions by viewModel.bitrateOptions.collectAsStateWithLifecycle()
     val audioInputDevices by viewModel.audioInputDevices.collectAsStateWithLifecycle()
     var openDialog by remember { mutableStateOf<SettingsDialog?>(null) }
+    val listState = rememberLazyListState()
+    var nestedNavigationScrollIndex by rememberSaveable { mutableIntStateOf(0) }
+    var nestedNavigationScrollOffset by rememberSaveable { mutableIntStateOf(0) }
+    var restoreScrollAfterNestedNavigation by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val resources = LocalResources.current
     val versionCode = remember(context) {
@@ -210,61 +223,81 @@ fun SettingsScreen(
             viewModel.setRecordLocation(false)
         }
     }
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentWindowInsets = WindowInsets(0.dp),
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.settings_title)) }) },
+    LaunchedEffect(isCurrentDestination) {
+        if (isCurrentDestination && restoreScrollAfterNestedNavigation) {
+            listState.scrollToItem(
+                index = nestedNavigationScrollIndex,
+                scrollOffset = nestedNavigationScrollOffset,
+            )
+            restoreScrollAfterNestedNavigation = false
+        }
+    }
+    fun navigateFromSettings(onNavigate: () -> Unit) {
+        nestedNavigationScrollIndex = listState.firstVisibleItemIndex
+        nestedNavigationScrollOffset = listState.firstVisibleItemScrollOffset
+        restoreScrollAfterNestedNavigation = true
+        onNavigate()
+    }
+    SoundMemoScaffold(
+        title = { Text(stringResource(R.string.settings_title)) },
+        contentWindowInsets = if (parentReservesBottomNavigation) {
+            WindowInsets.statusBars
+        } else {
+            WindowInsets.safeDrawing
+        },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(MaterialTheme.colorScheme.surface),
-            contentPadding = PaddingValues(bottom = 24.dp),
-        ) {
+        AdaptiveContent(padding = padding, maxContentWidth = 760.dp) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
             item {
                 SettingsSection(title = stringResource(R.string.settings_appearance)) {
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.WbSunny,
-                        headline = stringResource(R.string.settings_theme),
-                        supporting = themeModeLabel(settings.themeMode),
-                        onClick = { openDialog = SettingsDialog.Theme },
-                    )
-                    PreferenceDivider()
-                    SettingListItem(
-                        leadingIcon = Icons.Default.ColorLens,
-                        headline = stringResource(R.string.settings_dynamic_color),
-                        supporting = stringResource(R.string.settings_dynamic_color_desc),
-                        onClick = { viewModel.setDynamicColor(!settings.dynamicColor) },
-                        trailing = {
-                            Switch(checked = settings.dynamicColor, onCheckedChange = viewModel::setDynamicColor)
-                        },
-                    )
+                    SettingsItemCard(position = SettingsItemPosition.Top) {
+                        PreferenceRow(
+                            leadingIcon = Icons.Outlined.WbSunny,
+                            headline = stringResource(R.string.settings_theme),
+                            supporting = themeModeLabel(settings.themeMode),
+                            onClick = { openDialog = SettingsDialog.Theme },
+                        )
+                    }
+                    SettingsItemCard(position = SettingsItemPosition.Bottom) {
+                        TogglePreferenceRow(
+                            leadingIcon = Icons.Outlined.ColorLens,
+                            headline = stringResource(R.string.settings_dynamic_color),
+                            supporting = stringResource(R.string.settings_dynamic_color_desc),
+                            checked = settings.dynamicColor,
+                            onCheckedChange = viewModel::setDynamicColor,
+                        )
+                    }
                 }
             }
             item {
                 SettingsSection(title = stringResource(R.string.settings_language)) {
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.Language,
-                        headline = stringResource(R.string.settings_language),
-                        supporting = languageOptions()
-                            .firstOrNull { it.value == settings.locale }
-                            ?.label ?: stringResource(R.string.lang_system),
-                        onClick = { openDialog = SettingsDialog.Language },
-                    )
+                    SettingsItemCard {
+                        PreferenceRow(
+                            leadingIcon = Icons.Outlined.Language,
+                            headline = stringResource(R.string.settings_language),
+                            supporting = languageOptions()
+                                .firstOrNull { it.value == settings.locale }
+                                ?.label ?: stringResource(R.string.lang_system),
+                            onClick = { openDialog = SettingsDialog.Language },
+                        )
+                    }
                 }
             }
             item {
                 SettingsSection(title = stringResource(R.string.settings_recording_section)) {
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.AudioFile,
+                    SettingsItemCard(position = settingsItemPosition(0, 7)) { PreferenceRow(
+                        leadingIcon = Icons.Outlined.AudioFile,
                         headline = stringResource(R.string.settings_file_format),
                         supporting = recordingFormatLabel(settings.recordingFormat),
                         onClick = { openDialog = SettingsDialog.RecordingFormat },
-                    )
-                    PreferenceDivider()
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.Mic,
+                    ) }
+                    SettingsItemCard(position = settingsItemPosition(1, 7)) { PreferenceRow(
+                        leadingIcon = Icons.Outlined.Mic,
                         headline = stringResource(R.string.settings_microphone),
                         supporting = microphoneSupportingText(
                             preference = settings.preferredAudioInput,
@@ -272,17 +305,15 @@ fun SettingsScreen(
                             recordingFormat = settings.recordingFormat,
                         ),
                         onClick = { openDialog = SettingsDialog.Microphone },
-                    )
-                    PreferenceDivider()
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.GraphicEq,
+                    ) }
+                    SettingsItemCard(position = settingsItemPosition(2, 7)) { PreferenceRow(
+                        leadingIcon = Icons.Outlined.GraphicEq,
                         headline = stringResource(R.string.settings_recording_channels),
                         supporting = recordingChannelModeLabel(settings.recordingChannelMode),
                         onClick = { openDialog = SettingsDialog.RecordingChannels },
-                    )
-                    PreferenceDivider()
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.Speed,
+                    ) }
+                    SettingsItemCard(position = settingsItemPosition(3, 7)) { PreferenceRow(
+                        leadingIcon = Icons.Outlined.Speed,
                         headline = stringResource(R.string.settings_bitrate),
                         supporting = bitrateSupportingText(
                             recordingFormat = settings.recordingFormat,
@@ -294,39 +325,34 @@ fun SettingsScreen(
                         } else {
                             null
                         },
-                    )
-                    PreferenceDivider()
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.DriveFileRenameOutline,
+                    ) }
+                    SettingsItemCard(position = settingsItemPosition(4, 7)) { PreferenceRow(
+                        leadingIcon = Icons.Outlined.DriveFileRenameOutline,
                         headline = stringResource(R.string.settings_file_name_template),
                         supporting = settings.recordingNameTemplate,
                         onClick = { openDialog = SettingsDialog.FileNameTemplate },
-                    )
-                    PreferenceDivider()
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.Folder,
+                    ) }
+                    SettingsItemCard(position = settingsItemPosition(5, 7)) { PreferenceRow(
+                        leadingIcon = Icons.Outlined.Folder,
                         headline = stringResource(R.string.settings_save_location),
                         supporting = recordingStorageLocationLabel(
                             location = settings.recordingStorageLocation,
                             customFolderName = settings.customRecordingFolderName,
                         ),
                         onClick = { openDialog = SettingsDialog.StorageLocation },
-                    )
-                    PreferenceDivider()
-                    SettingListItem(
-                        leadingIcon = Icons.Default.Visibility,
+                    ) }
+                    SettingsItemCard(position = settingsItemPosition(6, 7)) { TogglePreferenceRow(
+                        leadingIcon = Icons.Outlined.Visibility,
                         headline = stringResource(R.string.settings_keep_screen_awake),
-                        onClick = { viewModel.setKeepScreenAwake(!settings.keepScreenAwake) },
-                        trailing = {
-                            Switch(checked = settings.keepScreenAwake, onCheckedChange = viewModel::setKeepScreenAwake)
-                        },
-                    )
+                        checked = settings.keepScreenAwake,
+                        onCheckedChange = viewModel::setKeepScreenAwake,
+                    ) }
                 }
             }
             item {
                 SettingsSection(title = stringResource(R.string.settings_playback_section)) {
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.FastRewind,
+                    SettingsItemCard(position = SettingsItemPosition.Top) { PreferenceRow(
+                        leadingIcon = Icons.Outlined.FastRewind,
                         headline = stringResource(R.string.settings_rewind_seconds),
                         supporting = pluralStringResource(
                             R.plurals.settings_skip_seconds_value,
@@ -334,10 +360,9 @@ fun SettingsScreen(
                             settings.rewindSeconds,
                         ),
                         onClick = { openDialog = SettingsDialog.RewindSeconds },
-                    )
-                    PreferenceDivider()
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.FastForward,
+                    ) }
+                    SettingsItemCard(position = SettingsItemPosition.Bottom) { PreferenceRow(
+                        leadingIcon = Icons.Outlined.FastForward,
                         headline = stringResource(R.string.settings_forward_seconds),
                         supporting = pluralStringResource(
                             R.plurals.settings_skip_seconds_value,
@@ -345,47 +370,31 @@ fun SettingsScreen(
                             settings.forwardSeconds,
                         ),
                         onClick = { openDialog = SettingsDialog.ForwardSeconds },
-                    )
+                    ) }
                 }
             }
             item {
                 SettingsSection(title = stringResource(R.string.settings_privacy)) {
-                    SettingListItem(
-                        leadingIcon = Icons.Default.MyLocation,
+                    SettingsItemCard(position = SettingsItemPosition.Top) { TogglePreferenceRow(
+                        leadingIcon = Icons.Outlined.MyLocation,
                         headline = stringResource(R.string.settings_record_location),
                         supporting = stringResource(R.string.settings_record_location_desc),
-                        onClick = ::toggleRecordLocation,
-                        trailing = {
-                            Switch(
-                                checked = settings.recordLocation,
-                                onCheckedChange = { toggleRecordLocation() },
-                            )
-                        },
-                    )
-                    PreferenceDivider()
-                    SettingListItem(
-                        leadingIcon = Icons.Default.EditLocationAlt,
+                        checked = settings.recordLocation,
+                        onCheckedChange = { toggleRecordLocation() },
+                    ) }
+                    SettingsItemCard(position = SettingsItemPosition.Middle) { TogglePreferenceRow(
+                        leadingIcon = Icons.Outlined.EditLocationAlt,
                         headline = stringResource(R.string.settings_write_location_to_media_file),
                         supporting = stringResource(R.string.settings_write_location_to_media_file_desc),
-                        onClick = {
-                            if (settings.recordLocation) {
-                                viewModel.setWriteLocationToMediaFile(!settings.writeLocationToMediaFile)
-                            }
-                        },
-                        trailing = {
-                            Switch(
-                                checked = settings.writeLocationToMediaFile,
-                                onCheckedChange = viewModel::setWriteLocationToMediaFile,
-                                enabled = settings.recordLocation,
-                            )
-                        },
-                    )
-                    PreferenceDivider()
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.Security,
+                        checked = settings.writeLocationToMediaFile,
+                        onCheckedChange = viewModel::setWriteLocationToMediaFile,
+                        enabled = settings.recordLocation,
+                    ) }
+                    SettingsItemCard(position = SettingsItemPosition.Bottom) { PreferenceRow(
+                        leadingIcon = Icons.Outlined.Security,
                         headline = stringResource(R.string.settings_privacy),
                         supporting = stringResource(R.string.settings_privacy_desc),
-                        onClick = onPrivacyClick,
+                        onClick = { navigateFromSettings(onPrivacyClick) },
                         trailing = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -393,35 +402,33 @@ fun SettingsScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         },
-                    )
+                    ) }
                 }
             }
             item {
                 SettingsSection(title = stringResource(R.string.settings_about)) {
-                    SettingListItem(
-                        leadingIcon = Icons.Default.Info,
+                    SettingsItemCard(position = SettingsItemPosition.Top) { PreferenceRow(
+                        leadingIcon = Icons.Outlined.Info,
                         headline = stringResource(R.string.settings_about_app),
                         supporting = buildString {
                             append(stringResource(R.string.settings_about_desc))
                             append("\n")
                             append(stringResource(R.string.settings_version_code, versionCode))
                         },
-                    )
-                    PreferenceDivider()
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.Code,
+                    ) }
+                    SettingsItemCard(position = SettingsItemPosition.Middle) { PreferenceRow(
+                        leadingIcon = Icons.Outlined.Code,
                         headline = stringResource(R.string.settings_source_repo),
                         supporting = SOURCE_REPO_URL,
                         onClick = {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SOURCE_REPO_URL)))
                         },
-                    )
-                    PreferenceDivider()
-                    PreferenceRow(
-                        leadingIcon = Icons.Default.Description,
+                    ) }
+                    SettingsItemCard(position = SettingsItemPosition.Bottom) { PreferenceRow(
+                        leadingIcon = Icons.Outlined.Description,
                         headline = stringResource(R.string.settings_third_party_licenses),
                         supporting = stringResource(R.string.settings_third_party_licenses_desc),
-                        onClick = onThirdPartyLicensesClick,
+                        onClick = { navigateFromSettings(onThirdPartyLicensesClick) },
                         trailing = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -429,8 +436,9 @@ fun SettingsScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         },
-                    )
+                    ) }
                 }
+            }
             }
         }
     }
@@ -564,7 +572,6 @@ fun SettingsScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThirdPartyLicensesScreen(
     onNavigateBack: () -> Unit,
@@ -575,101 +582,103 @@ fun ThirdPartyLicensesScreen(
             context.assets.open("COPYING").bufferedReader().use { it.readText() }
         }.getOrDefault("")
     }
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.surface,
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_third_party_licenses)) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.settings_back),
-                        )
-                    }
-                },
-            )
+    SoundMemoScaffold(
+        title = { Text(stringResource(R.string.settings_third_party_licenses)) },
+        navigationIcon = {
+            IconButton(onClick = onNavigateBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.settings_back),
+                )
+            }
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(MaterialTheme.colorScheme.surface),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item {
-                Text(
-                    text = stringResource(R.string.third_party_lame_title),
-                    style = MaterialTheme.typography.titleLarge,
-                )
-            }
-            item {
-                Text(
-                    text = stringResource(R.string.third_party_lame_desc),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            }
-            item {
-                Text(
-                    text = licenseText,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+        AdaptiveContent(padding = padding, maxContentWidth = 760.dp) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    Text(
+                        text = stringResource(R.string.third_party_lame_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    )
+                }
+                item {
+                    Text(
+                        text = stringResource(R.string.third_party_lame_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    )
+                }
+                item {
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    ) {
+                        Text(
+                            text = licenseText,
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            modifier = Modifier.padding(20.dp),
+                        )
+                    }
+                }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrivacyScreen(
     onNavigateBack: () -> Unit,
 ) {
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.surface,
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_privacy)) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.settings_back),
-                        )
-                    }
-                },
-            )
+    SoundMemoScaffold(
+        title = { Text(stringResource(R.string.settings_privacy)) },
+        navigationIcon = {
+            IconButton(onClick = onNavigateBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.settings_back),
+                )
+            }
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(MaterialTheme.colorScheme.surface),
-            contentPadding = PaddingValues(bottom = 24.dp),
-        ) {
-            item {
-                SettingsSection(title = stringResource(R.string.privacy_claims_title)) {
-                    PrivacyClaim(
-                        title = stringResource(R.string.privacy_claim_no_account),
-                        body = stringResource(R.string.privacy_claim_no_account_desc),
-                    )
-                    PreferenceDivider()
-                    PrivacyClaim(
-                        title = stringResource(R.string.privacy_claim_no_tracking),
-                        body = stringResource(R.string.privacy_claim_no_tracking_desc),
-                    )
-                    PreferenceDivider()
-                    PrivacyClaim(
-                        title = stringResource(R.string.privacy_claim_no_cloud),
-                        body = stringResource(R.string.privacy_claim_no_cloud_desc),
-                    )
-                    PreferenceDivider()
-                    PrivacyClaim(
-                        title = stringResource(R.string.privacy_claim_system_backup),
-                        body = stringResource(R.string.privacy_claim_system_backup_desc),
-                    )
+        AdaptiveContent(padding = padding, maxContentWidth = 760.dp) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 24.dp),
+            ) {
+                item {
+                    SettingsSection(title = stringResource(R.string.privacy_claims_title)) {
+                        SettingsItemCard(position = settingsItemPosition(0, 4)) {
+                            PrivacyClaim(
+                                title = stringResource(R.string.privacy_claim_no_account),
+                                body = stringResource(R.string.privacy_claim_no_account_desc),
+                            )
+                        }
+                        SettingsItemCard(position = settingsItemPosition(1, 4)) {
+                            PrivacyClaim(
+                                title = stringResource(R.string.privacy_claim_no_tracking),
+                                body = stringResource(R.string.privacy_claim_no_tracking_desc),
+                            )
+                        }
+                        SettingsItemCard(position = settingsItemPosition(2, 4)) {
+                            PrivacyClaim(
+                                title = stringResource(R.string.privacy_claim_no_cloud),
+                                body = stringResource(R.string.privacy_claim_no_cloud_desc),
+                            )
+                        }
+                        SettingsItemCard(position = settingsItemPosition(3, 4)) {
+                            PrivacyClaim(
+                                title = stringResource(R.string.privacy_claim_system_backup),
+                                body = stringResource(R.string.privacy_claim_system_backup_desc),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -701,35 +710,6 @@ private fun PrivacyClaim(
 }
 
 @Composable
-private fun SettingsSection(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 8.dp),
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface),
-            content = content,
-        )
-    }
-}
-
-@Composable
-private fun PreferenceDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 72.dp),
-        color = MaterialTheme.colorScheme.outlineVariant,
-    )
-}
-
-@Composable
 private fun PreferenceRow(
     leadingIcon: ImageVector? = null,
     headline: String,
@@ -740,9 +720,13 @@ private fun PreferenceRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .heightIn(min = 56.dp)
-            .padding(start = 24.dp, top = 12.dp, end = 16.dp, bottom = 12.dp),
+            .then(
+                if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick)
+                else Modifier,
+            )
+            .heightIn(min = 80.dp)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -753,29 +737,26 @@ private fun PreferenceRow(
                 Icon(
                     imageVector = it,
                     contentDescription = null,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(24.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        Box(modifier = Modifier.width(24.dp))
-        Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = headline,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
             )
             supporting?.let {
                 Text(
                     text = it,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
         trailing?.let {
             Row(
-                modifier = Modifier.padding(start = 16.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -786,20 +767,57 @@ private fun PreferenceRow(
 }
 
 @Composable
-private fun SettingListItem(
-    leadingIcon: ImageVector? = null,
+private fun TogglePreferenceRow(
+    leadingIcon: ImageVector,
     headline: String,
     supporting: String? = null,
-    onClick: (() -> Unit)? = null,
-    trailing: (@Composable () -> Unit)? = null,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
 ) {
-    PreferenceRow(
-        leadingIcon = leadingIcon,
-        headline = headline,
-        supporting = supporting,
-        onClick = onClick,
-        trailing = trailing?.let { { trailing() } },
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = checked,
+                enabled = enabled,
+                role = Role.Switch,
+                onValueChange = onCheckedChange,
+            )
+            .heightIn(min = 80.dp)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = leadingIcon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(text = headline, style = MaterialTheme.typography.bodyLarge)
+            supporting?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            enabled = enabled,
+            thumbContent = {
+                Icon(
+                    imageVector = if (checked) Icons.Filled.Check else Icons.Filled.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+            },
+        )
+    }
 }
 
 @Composable
@@ -811,37 +829,14 @@ private fun <T> SingleChoiceSettingsDialog(
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column {
-                options.forEach { option ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(option.value) }
-                            .padding(vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(
-                            selected = isSelected(option.value),
-                            onClick = { onSelect(option.value) },
-                        )
-                        Text(
-                            text = option.label,
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.library_cancel))
-            }
-        },
+    SingleChoiceDialog(
+        title = title,
+        options = options,
+        optionLabel = { option -> option.label },
+        isSelected = { option -> isSelected(option.value) },
+        onSelect = { option -> onSelect(option.value) },
+        dismissLabel = stringResource(R.string.library_cancel),
+        onDismiss = onDismiss,
     )
 }
 

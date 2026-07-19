@@ -59,7 +59,7 @@ class RecorderViewModel(
 
     fun start(context: Context, recordLocation: Boolean) {
         mutableStagingFilesState.value = StagingFilesUiState()
-        RecordingStateHolder.update(RecorderUiState(status = RecorderStatus.Starting))
+        RecordingStateHolder.set(RecorderUiState(status = RecorderStatus.Starting))
         try {
             ContextCompat.startForegroundService(
                 context,
@@ -70,7 +70,7 @@ class RecorderViewModel(
                 ),
             )
         } catch (exception: Exception) {
-            RecordingStateHolder.update(
+            RecordingStateHolder.set(
                 RecorderUiState(
                     status = RecorderStatus.Error,
                     message = exception.localizedMessage ?: context.getString(R.string.recorder_start_failed),
@@ -169,9 +169,8 @@ class RecorderViewModel(
     }.toTypedArray()
 
     fun consumeMessage() {
-        val current = state.value
-        if (current.message != null) {
-            RecordingStateHolder.update(consumeRecorderMessage(current))
+        RecordingStateHolder.update { current ->
+            if (current.message != null) consumeRecorderMessage(current) else current
         }
     }
 }

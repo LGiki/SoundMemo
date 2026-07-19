@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ShowChart
@@ -30,21 +30,17 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,12 +56,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.lgiki.soundmemo.R
+import net.lgiki.soundmemo.ui.AdaptiveContent
+import net.lgiki.soundmemo.ui.SingleChoiceDialog
+import net.lgiki.soundmemo.ui.SoundMemoScaffold
 import net.lgiki.soundmemo.data.settings.RecorderVisualization
 import net.lgiki.soundmemo.data.settings.VuMeterValueDisplay
 import net.lgiki.soundmemo.domain.recorder.AudioInputDevice
@@ -85,7 +85,6 @@ private const val MIN_WAVEFORM_LEVEL = 0.08f
 private const val VU_SEGMENT_COUNT = 20
 private const val MAX_VU_AMPLITUDE = 32767f
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecorderScreen(
     viewModel: RecorderViewModel,
@@ -106,20 +105,31 @@ fun RecorderScreen(
             viewModel.consumeMessage()
         }
     }
-    Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.recorder_title)) }) },
+    SoundMemoScaffold(
+        title = { Text(stringResource(R.string.recorder_title)) },
         snackbarHost = { SnackbarHost(snackbar) },
+        bottomBar = {
+            RecorderActionBar {
+                RecorderControls(
+                    status = state.status,
+                    onRecordRequest = onRecordRequest,
+                    onPause = { viewModel.pause(context) },
+                    onResume = { viewModel.resume(context) },
+                    onStop = { viewModel.stop(context) },
+                    onDiscardClick = { showDiscardConfirmDialog = true },
+                )
+            }
+        },
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            RecordingStatusPanel(
+        AdaptiveContent(padding = padding) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                RecordingStatusPanel(
                 elapsedMs = state.elapsedMs,
                 status = state.status,
                 amplitude = state.amplitude,
@@ -131,18 +141,9 @@ fun RecorderScreen(
                 onPreferredAudioInputClick = { showAudioInputDialog = true },
                 onRecorderVisualizationChange = viewModel::setRecorderVisualization,
                 onVuMeterValueClick = viewModel::cycleVuMeterValueDisplay,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-            )
-            RecorderControls(
-                status = state.status,
-                onRecordRequest = onRecordRequest,
-                onPause = { viewModel.pause(context) },
-                onResume = { viewModel.resume(context) },
-                onStop = { viewModel.stop(context) },
-                onDiscardClick = { showDiscardConfirmDialog = true },
-            )
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     }
     if (showDiscardConfirmDialog) {
@@ -168,6 +169,22 @@ fun RecorderScreen(
 }
 
 @Composable
+private fun RecorderActionBar(content: @Composable () -> Unit) {
+    Surface(tonalElevation = 3.dp) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(modifier = Modifier.widthIn(max = 1_200.dp).fillMaxWidth()) {
+                content()
+            }
+        }
+    }
+}
+
+@Composable
 private fun RecordingStatusPanel(
     elapsedMs: Long,
     status: RecorderStatus,
@@ -184,47 +201,52 @@ private fun RecordingStatusPanel(
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 20.dp),
-        ) {
-            RecordingHeaderRow(
-                elapsedMs = elapsedMs,
-                recorderVisualization = recorderVisualization,
-                onRecorderVisualizationChange = onRecorderVisualizationChange,
-            )
-            AudioInputLine(
-                status = status,
-                preferredAudioInput = preferredAudioInput,
-                actualAudioInput = actualAudioInput,
-                onPreferredAudioInputClick = onPreferredAudioInputClick,
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val compactHeight = maxHeight < 260.dp
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(top = 20.dp),
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = if (compactHeight) 10.dp else 20.dp),
             ) {
-                when (recorderVisualization) {
-                    RecorderVisualization.Waveform -> RecordingWaveform(
-                        waveform = waveform,
-                        status = status,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    RecorderVisualization.VuMeter -> RecordingVuMeter(
-                        amplitude = amplitude,
-                        status = status,
-                        valueDisplay = vuMeterValueDisplay,
-                        onValueClick = onVuMeterValueClick,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                RecordingHeaderRow(
+                    elapsedMs = elapsedMs,
+                    status = status,
+                    recorderVisualization = recorderVisualization,
+                    onRecorderVisualizationChange = onRecorderVisualizationChange,
+                    compact = compactHeight,
+                )
+                AudioInputLine(
+                    status = status,
+                    preferredAudioInput = preferredAudioInput,
+                    actualAudioInput = actualAudioInput,
+                    onPreferredAudioInputClick = onPreferredAudioInputClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = if (compactHeight) 4.dp else 12.dp),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(top = if (compactHeight) 4.dp else 20.dp),
+                ) {
+                    when (recorderVisualization) {
+                        RecorderVisualization.Waveform -> RecordingWaveform(
+                            waveform = waveform,
+                            status = status,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        RecorderVisualization.VuMeter -> RecordingVuMeter(
+                            amplitude = amplitude,
+                            status = status,
+                            valueDisplay = vuMeterValueDisplay,
+                            onValueClick = onVuMeterValueClick,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
         }
@@ -234,30 +256,101 @@ private fun RecordingStatusPanel(
 @Composable
 private fun RecordingHeaderRow(
     elapsedMs: Long,
+    status: RecorderStatus,
     recorderVisualization: RecorderVisualization,
     onRecorderVisualizationChange: (RecorderVisualization) -> Unit,
+    compact: Boolean,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Spacer(modifier = Modifier.width(48.dp))
-        Text(
-            text = formatDuration(elapsedMs),
-            style = MaterialTheme.typography.displayMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.weight(1f),
-        )
+    if (compact) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RecordingStatusBadge(status)
+            Text(
+                text = formatDuration(elapsedMs),
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            RecorderVisualizationIconButton(
+                visualization = recorderVisualization,
+                onVisualizationChange = onRecorderVisualizationChange,
+            )
+        }
+        return
+    }
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            RecordingStatusBadge(status)
+            Text(
+                text = formatDuration(elapsedMs),
+                style = MaterialTheme.typography.displayMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
+        }
         RecorderVisualizationIconButton(
             visualization = recorderVisualization,
             onVisualizationChange = onRecorderVisualizationChange,
+            modifier = Modifier.align(Alignment.TopEnd),
         )
     }
 }
 
 @Composable
-private fun AudioInputLine(
+private fun RecordingStatusBadge(status: RecorderStatus) {
+    val label = when (status) {
+        RecorderStatus.Idle -> stringResource(R.string.recorder_status_idle)
+        RecorderStatus.Starting -> stringResource(R.string.notification_text_starting)
+        RecorderStatus.Recording -> stringResource(R.string.recorder_status_recording)
+        RecorderStatus.Paused -> stringResource(R.string.recorder_status_paused)
+        RecorderStatus.Saving -> stringResource(R.string.recorder_status_saving)
+        RecorderStatus.Saved -> stringResource(R.string.recorder_status_saved)
+        RecorderStatus.Error -> stringResource(R.string.recorder_status_error)
+    }
+    val isErrorState = status == RecorderStatus.Recording || status == RecorderStatus.Error
+    val containerColor = when {
+        isErrorState -> MaterialTheme.colorScheme.errorContainer
+        status == RecorderStatus.Paused -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val contentColor = when {
+        isErrorState -> MaterialTheme.colorScheme.onErrorContainer
+        status == RecorderStatus.Paused -> MaterialTheme.colorScheme.onTertiaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        shape = CircleShape,
+        color = containerColor,
+        contentColor = contentColor,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (status == RecorderStatus.Recording) {
+                Surface(
+                    modifier = Modifier.size(8.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.error,
+                    content = {},
+                )
+            }
+            Text(text = label, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
+internal fun AudioInputLine(
     status: RecorderStatus,
     preferredAudioInput: AudioInputPreference?,
     actualAudioInput: AudioInputRoute?,
@@ -298,8 +391,17 @@ private fun AudioInputLine(
             contentColor = content,
             modifier = Modifier
                 .widthIn(max = 320.dp)
-                .heightIn(min = 36.dp)
-                .then(if (!active) Modifier.clickable(onClick = onPreferredAudioInputClick) else Modifier)
+                .heightIn(min = 48.dp)
+                .then(
+                    if (!active) {
+                        Modifier.clickable(
+                            role = Role.Button,
+                            onClick = onPreferredAudioInputClick,
+                        )
+                    } else {
+                        Modifier
+                    },
+                )
                 .semantics { contentDescription = description },
         ) {
         Row(
@@ -336,6 +438,7 @@ private fun AudioInputLine(
 private fun RecorderVisualizationIconButton(
     visualization: RecorderVisualization,
     onVisualizationChange: (RecorderVisualization) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val showingVuMeter = visualization == RecorderVisualization.VuMeter
     val contentDescription = stringResource(
@@ -352,7 +455,7 @@ private fun RecorderVisualizationIconButton(
                 if (showingVuMeter) RecorderVisualization.Waveform else RecorderVisualization.VuMeter,
             )
         },
-        modifier = Modifier.size(48.dp),
+        modifier = modifier.size(48.dp),
     ) {
         Icon(
             imageVector = if (showingVuMeter) {
@@ -373,63 +476,27 @@ private fun AudioInputPickerDialog(
     onSelect: (AudioInputPreference?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_microphone)) },
-        text = {
-            Column {
-                AudioInputOptionRow(
-                    label = stringResource(R.string.settings_microphone_automatic),
-                    selected = selected == null,
-                    onClick = { onSelect(null) },
+    val automaticLabel = stringResource(R.string.settings_microphone_automatic)
+    val options = listOf<AudioInputDevice?>(null) + devices
+    SingleChoiceDialog(
+        title = stringResource(R.string.settings_microphone),
+        options = options,
+        optionLabel = { device ->
+            device?.let { audioInputLabel(it.type, it.productName) } ?: automaticLabel
+        },
+        isSelected = { device ->
+            device?.let {
+                audioInputPreferenceSelected(
+                    option = it.preference,
+                    selected = selected,
+                    devices = devices,
                 )
-                devices.forEach { device ->
-                    val preference = device.preference
-                    AudioInputOptionRow(
-                        label = audioInputLabel(device.type, device.productName),
-                        selected = audioInputPreferenceSelected(
-                            option = preference,
-                            selected = selected,
-                            devices = devices,
-                        ),
-                        onClick = { onSelect(preference) },
-                    )
-                }
-            }
+            } ?: (selected == null)
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.library_cancel))
-            }
-        },
+        onSelect = { device -> onSelect(device?.preference) },
+        dismissLabel = stringResource(R.string.library_cancel),
+        onDismiss = onDismiss,
     )
-}
-
-@Composable
-private fun AudioInputOptionRow(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = onClick,
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
 }
 
 private fun audioInputPreferenceSelected(
@@ -447,7 +514,6 @@ private fun audioInputPreferenceSelected(
             normalizedAudioInputName(option.productName) == normalizedAudioInputName(selected.productName)
     }
 }
-
 
 @Composable
 private fun DiscardRecordingDialog(

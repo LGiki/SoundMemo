@@ -42,6 +42,7 @@
     </plurals>
     <string name="recorder_saved_to_app_files_message">Recording saved to app files. The selected folder is unavailable.</string>
     <string name="recorder_start_failed">Recording could not start.</string>
+    <string name="recorder_interrupted">Recording was interrupted. Any recoverable audio remains in staging.</string>
     <string name="recorder_stereo_fallback_message">Stereo is unavailable on this input. Recording in mono.</string>
     <string name="recorder_recording_part_name">%1$s (Part %2$d)</string>
     <string name="recorder_audio_input_current">Recording input</string>

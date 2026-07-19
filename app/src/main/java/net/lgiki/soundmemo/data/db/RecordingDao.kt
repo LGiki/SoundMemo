@@ -3,7 +3,6 @@ package net.lgiki.soundmemo.data.db
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
-import androidx.room.Update
 import net.lgiki.soundmemo.data.model.Recording
 import kotlinx.coroutines.flow.Flow
 
@@ -34,8 +33,17 @@ interface RecordingDao {
     @Insert
     suspend fun insertAll(recordings: List<Recording>): List<Long>
 
-    @Update
-    suspend fun update(recording: Recording)
+    @Query("UPDATE recordings SET name = :name, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun rename(id: Long, name: String, updatedAt: Long)
+
+    @Query(
+        "UPDATE recordings SET isDeleted = 1, deletedAt = :deletedAt, updatedAt = :updatedAt " +
+            "WHERE id = :id",
+    )
+    suspend fun moveToRecycleBin(id: Long, deletedAt: Long, updatedAt: Long)
+
+    @Query("UPDATE recordings SET isDeleted = 0, deletedAt = NULL, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun restore(id: Long, updatedAt: Long)
 
     @Query("DELETE FROM recordings WHERE id = :id")
     suspend fun deletePermanently(id: Long)
