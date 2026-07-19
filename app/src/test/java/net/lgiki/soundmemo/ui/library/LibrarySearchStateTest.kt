@@ -6,10 +6,9 @@ import org.junit.Test
 
 class LibrarySearchStateTest {
     @Test
-    fun shouldShowEmptyLibrary_onlyWhenNoActiveOrDeletedRecordings() {
-        assertTrue(shouldShowEmptyLibrary(activeCount = 0, deletedCount = 0))
-        assertFalse(shouldShowEmptyLibrary(activeCount = 1, deletedCount = 0))
-        assertFalse(shouldShowEmptyLibrary(activeCount = 0, deletedCount = 1))
+    fun shouldShowEmptyLibrary_whenThereAreNoActiveRecordings() {
+        assertTrue(shouldShowEmptyLibrary(activeCount = 0))
+        assertFalse(shouldShowEmptyLibrary(activeCount = 1))
     }
 
     @Test

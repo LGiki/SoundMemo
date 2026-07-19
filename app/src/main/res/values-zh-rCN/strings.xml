@@ -58,6 +58,10 @@
     <string name="library_empty_action">开始录音</string>
     <string name="library_no_search_results">没有匹配的录音</string>
     <string name="library_recycle_bin">回收站</string>
+    <string name="library_open_recycle_bin">打开回收站</string>
+    <string name="library_back">返回</string>
+    <string name="library_recycle_bin_empty">回收站为空</string>
+    <string name="library_recycle_bin_empty_description">删除的录音会显示在这里。</string>
     <string name="library_miniplayer_playing">播放中</string>
     <string name="library_miniplayer_paused">已暂停</string>
     <string name="library_play_pause_desc">播放或暂停当前录音</string>
@@ -67,12 +71,30 @@
     <string name="library_properties">属性</string>
     <string name="library_share">分享</string>
     <string name="library_delete">删除</string>
+    <plurals name="library_moved_to_recycle_bin">
+        <item quantity="other">%1$d 条录音已移至回收站，将在 %2$d 天后永久删除。</item>
+    </plurals>
+    <plurals name="library_permanently_deleted_in_days">
+        <item quantity="other">将在 %d 天后永久删除</item>
+    </plurals>
+    <string name="library_permanent_deletion_scheduled">已计划永久删除</string>
+    <plurals name="library_selected">
+        <item quantity="other">已选择 %d 项</item>
+    </plurals>
+    <string name="library_clear_selection">清除选择</string>
+    <string name="library_select_all">全选</string>
+    <string name="library_share_selected">分享所选录音</string>
+    <string name="library_delete_selected">删除所选录音</string>
+    <string name="library_toggle_selection_desc">选择 %s</string>
     <string name="library_rename_dialog_title">重命名录音</string>
     <string name="library_name_label">名称</string>
     <string name="library_save">保存</string>
     <string name="library_cancel">取消</string>
     <string name="library_restore_desc">恢复 %s</string>
     <string name="library_delete_perm_desc">永久删除 %s</string>
+    <string name="library_delete_permanently_title">永久删除？</string>
+    <string name="library_delete_permanently_message">“%s”及其音频文件将被永久删除。此操作无法撤销。</string>
+    <string name="library_delete_permanently_action">永久删除</string>
     <string name="library_deleted_prefix">已删除 %s</string>
     <string name="recording_location_coordinates">位置：%1$s</string>
     <string name="library_properties_title">录音属性</string>

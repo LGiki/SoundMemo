@@ -59,6 +59,10 @@
     <string name="library_empty_action">Start recording</string>
     <string name="library_no_search_results">No matching recordings</string>
     <string name="library_recycle_bin">Recycle Bin</string>
+    <string name="library_open_recycle_bin">Open Recycle Bin</string>
+    <string name="library_back">Back</string>
+    <string name="library_recycle_bin_empty">Recycle Bin is empty</string>
+    <string name="library_recycle_bin_empty_description">Deleted recordings will appear here.</string>
     <string name="library_miniplayer_playing">Playing</string>
     <string name="library_miniplayer_paused">Paused</string>
     <string name="library_play_pause_desc">Play or pause current recording</string>
@@ -68,12 +72,33 @@
     <string name="library_properties">Properties</string>
     <string name="library_share">Share</string>
     <string name="library_delete">Delete</string>
+    <plurals name="library_moved_to_recycle_bin">
+        <item quantity="one">Recording moved to Recycle Bin. It will be permanently deleted in %2$d days.</item>
+        <item quantity="other">%1$d recordings moved to Recycle Bin. They will be permanently deleted in %2$d days.</item>
+    </plurals>
+    <plurals name="library_permanently_deleted_in_days">
+        <item quantity="one">Permanently deleted in %d day</item>
+        <item quantity="other">Permanently deleted in %d days</item>
+    </plurals>
+    <string name="library_permanent_deletion_scheduled">Scheduled for permanent deletion</string>
+    <plurals name="library_selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <string name="library_clear_selection">Clear selection</string>
+    <string name="library_select_all">Select all</string>
+    <string name="library_share_selected">Share selected recordings</string>
+    <string name="library_delete_selected">Delete selected recordings</string>
+    <string name="library_toggle_selection_desc">Select %s</string>
     <string name="library_rename_dialog_title">Rename recording</string>
     <string name="library_name_label">Name</string>
     <string name="library_save">Save</string>
     <string name="library_cancel">Cancel</string>
     <string name="library_restore_desc">Restore %s</string>
     <string name="library_delete_perm_desc">Delete %s permanently</string>
+    <string name="library_delete_permanently_title">Delete permanently?</string>
+    <string name="library_delete_permanently_message">“%s” and its audio file will be permanently deleted. This cannot be undone.</string>
+    <string name="library_delete_permanently_action">Delete permanently</string>
     <string name="library_deleted_prefix">Deleted %s</string>
     <string name="recording_location_coordinates">Location: %1$s</string>
     <string name="library_properties_title">Recording properties</string>

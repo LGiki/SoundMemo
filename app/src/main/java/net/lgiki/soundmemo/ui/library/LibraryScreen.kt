@@ -28,7 +28,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.FastForward
@@ -42,9 +44,11 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -70,6 +74,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
@@ -77,6 +82,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -99,12 +105,74 @@ fun LibraryScreen(
     viewModel: LibraryViewModel,
     parentReservesBottomNavigation: Boolean,
     onStartRecording: () -> Unit,
+    onRecycleBinClick: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val playerState by viewModel.playback.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var propertiesRecording by remember { mutableStateOf<Recording?>(null) }
+    var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    val selectedRecordings = state.activeRecordings.filter { it.id in selectedIds }
+    val activeSelectedIds = selectedRecordings.mapTo(linkedSetOf()) { it.id }
+    val selectionMode = activeSelectedIds.isNotEmpty()
+    fun moveToRecycleBin(recordings: List<Recording>) {
+        if (recordings.isEmpty()) return
+        if (recordings.any { it.id == playerState.recording?.id }) {
+            viewModel.playback.stop()
+        }
+        val message = context.resources.getQuantityString(
+            R.plurals.library_moved_to_recycle_bin,
+            recordings.size,
+            recordings.size,
+            state.recycleRetentionDays,
+        )
+        viewModel.delete(recordings) {
+            Toast.makeText(context.applicationContext, message, Toast.LENGTH_SHORT).show()
+        }
+        selectedIds = emptySet()
+    }
     SoundMemoScaffold(
-        title = { Text(stringResource(R.string.library_title)) },
+        title = {
+            if (selectionMode) {
+                Text(pluralStringResource(R.plurals.library_selected, activeSelectedIds.size, activeSelectedIds.size))
+            } else {
+                Text(stringResource(R.string.library_title))
+            }
+        },
+        navigationIcon = if (selectionMode) {
+            {
+                IconButton(onClick = { selectedIds = emptySet() }) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.library_clear_selection))
+                }
+            }
+        } else {
+            {}
+        },
+        actions = {
+            if (selectionMode) {
+                IconButton(onClick = { selectedIds = state.recordings.mapTo(linkedSetOf()) { it.id } }) {
+                    Icon(Icons.Default.DoneAll, contentDescription = stringResource(R.string.library_select_all))
+                }
+                IconButton(onClick = {
+                    viewModel.share(context, selectedRecordings)
+                    selectedIds = emptySet()
+                }) {
+                    Icon(Icons.Default.Share, contentDescription = stringResource(R.string.library_share_selected))
+                }
+                IconButton(onClick = {
+                    moveToRecycleBin(selectedRecordings)
+                }) {
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.library_delete_selected))
+                }
+            } else {
+                IconButton(onClick = onRecycleBinClick) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = stringResource(R.string.library_open_recycle_bin),
+                    )
+                }
+            }
+        },
         contentWindowInsets = if (parentReservesBottomNavigation) {
             WindowInsets.statusBars
         } else {
@@ -125,8 +193,8 @@ fun LibraryScreen(
                     shape = MaterialTheme.shapes.large,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                SortRow(state.sort, viewModel::setSort)
-                if (shouldShowEmptyLibrary(state.activeCount, state.deleted.size)) {
+                if (!selectionMode) SortRow(state.sort, viewModel::setSort)
+                if (shouldShowEmptyLibrary(state.activeCount)) {
                     EmptyLibrary(onStartRecording = onStartRecording, modifier = Modifier.weight(1f))
                 } else {
                     LazyColumn(
@@ -144,6 +212,11 @@ fun LibraryScreen(
                             RecordingItem(
                                 recording = recording,
                                 playerState = playerState.takeIf { isSelected },
+                                selectionMode = selectionMode,
+                                multiSelected = recording.id in selectedIds,
+                                onSelectionChange = {
+                                    selectedIds = selectedIds.toggle(recording.id)
+                                },
                                 onPlay = {
                                     if (isSelected) {
                                         viewModel.playback.toggle()
@@ -154,12 +227,7 @@ fun LibraryScreen(
                                 onRename = { viewModel.rename(recording.id, it) },
                                 onProperties = { propertiesRecording = recording },
                                 onShare = { viewModel.share(it, recording) },
-                                onDelete = {
-                                    if (isSelected) {
-                                        viewModel.playback.stop()
-                                    }
-                                    viewModel.delete(recording.id)
-                                },
+                                onDelete = { moveToRecycleBin(listOf(recording)) },
                                 onSeek = viewModel.playback::seekTo,
                                 rewindSeconds = state.rewindSeconds,
                                 onSkipBack = { viewModel.playback.skipBy(-state.rewindSeconds * 1_000L) },
@@ -168,23 +236,6 @@ fun LibraryScreen(
                                 onSkipForward = { viewModel.playback.skipBy(state.forwardSeconds * 1_000L) },
                                 onSpeed = viewModel.playback::setSpeed,
                             )
-                        }
-                        if (state.deleted.isNotEmpty()) {
-                            item {
-                                Text(
-                                    stringResource(R.string.library_recycle_bin),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(start = 8.dp, top = 16.dp, end = 8.dp, bottom = 2.dp),
-                                )
-                            }
-                            items(state.deleted, key = { "deleted-${it.id}" }) { recording ->
-                                DeletedRecordingItem(
-                                    recording = recording,
-                                    onRestore = { viewModel.restore(recording.id) },
-                                    onDeleteForever = { viewModel.deletePermanently(recording.id) },
-                                )
-                            }
                         }
                     }
                 }
@@ -199,8 +250,7 @@ fun LibraryScreen(
     }
 }
 
-internal fun shouldShowEmptyLibrary(activeCount: Int, deletedCount: Int): Boolean =
-    activeCount == 0 && deletedCount == 0
+internal fun shouldShowEmptyLibrary(activeCount: Int): Boolean = activeCount == 0
 
 internal fun shouldShowNoSearchResults(query: String, filteredCount: Int, activeCount: Int): Boolean =
     query.isNotBlank() && filteredCount == 0 && activeCount > 0
@@ -318,6 +368,9 @@ private fun sortLabel(sort: RecordingSort): String = when (sort) {
 private fun RecordingItem(
     recording: Recording,
     playerState: PlayerUiState?,
+    selectionMode: Boolean,
+    multiSelected: Boolean,
+    onSelectionChange: () -> Unit,
     onPlay: () -> Unit,
     onRename: (String) -> Unit,
     onProperties: () -> Unit,
@@ -336,6 +389,7 @@ private fun RecordingItem(
     var renameOpen by remember { mutableStateOf(false) }
     val location = formatRecordingLocation(recording)
     val isPlaying = playerState?.isPlaying == true
+    val selectionDescription = stringResource(R.string.library_toggle_selection_desc, recording.name)
     RecordingRow(
         title = recording.name,
         metadata = listOfNotNull(
@@ -344,25 +398,37 @@ private fun RecordingItem(
             formatFileSize(recording.fileSizeBytes),
             location?.let { stringResource(R.string.recording_location_coordinates, it) },
         ).joinToString(" - "),
-        selected = playerState != null,
-        onClick = onPlay,
+        selected = if (selectionMode) multiSelected else playerState != null,
+        onClick = if (selectionMode) onSelectionChange else onPlay,
+        onLongClick = onSelectionChange,
         leading = {
-            FilledTonalIconButton(onClick = onPlay, modifier = Modifier.size(44.dp)) {
-                Icon(
-                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) {
-                        stringResource(R.string.player_pause)
-                    } else {
-                        stringResource(R.string.library_play_desc, recording.name)
+            if (selectionMode) {
+                Checkbox(
+                    checked = multiSelected,
+                    onCheckedChange = { onSelectionChange() },
+                    modifier = Modifier.semantics {
+                        contentDescription = selectionDescription
                     },
                 )
+            } else {
+                FilledTonalIconButton(onClick = onPlay, modifier = Modifier.size(44.dp)) {
+                    Icon(
+                        if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) {
+                            stringResource(R.string.player_pause)
+                        } else {
+                            stringResource(R.string.library_play_desc, recording.name)
+                        },
+                    )
+                }
             }
         },
         trailing = {
-            IconButton(onClick = { menuOpen = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.library_more_actions))
-            }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            if (!selectionMode) {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.library_more_actions))
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.library_rename)) },
                     leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
@@ -395,6 +461,7 @@ private fun RecordingItem(
                         onDelete()
                     },
                 )
+            }
             }
         },
         expandedContent = {
@@ -601,15 +668,57 @@ internal fun storageDisplayValue(recording: Recording): String? =
     }
 
 @Composable
-private fun DeletedRecordingItem(
+internal fun DeletedRecordingItem(
     recording: Recording,
+    retentionDays: Int,
+    nowMillis: Long,
     onRestore: () -> Unit,
     onDeleteForever: () -> Unit,
 ) {
+    val remainingDays = remainingRecycleBinDays(
+        deletedAt = recording.deletedAt,
+        retentionDays = retentionDays,
+        nowMillis = nowMillis,
+    )
+    val deletionStatus = if (remainingDays > 0) {
+        pluralStringResource(
+            R.plurals.library_permanently_deleted_in_days,
+            remainingDays,
+            remainingDays,
+        )
+    } else {
+        stringResource(R.string.library_permanent_deletion_scheduled)
+    }
+    val isNearDeletion = isNearPermanentDeletion(remainingDays)
+    val deletedAtText = stringResource(
+        R.string.library_deleted_prefix,
+        recording.deletedAt?.let(::formatDateTime).orEmpty(),
+    )
     RecordingRow(
         title = recording.name,
-        metadata = stringResource(R.string.library_deleted_prefix, recording.deletedAt?.let(::formatDateTime).orEmpty()),
+        metadata = deletedAtText,
         muted = true,
+        urgent = isNearDeletion,
+        supportingContent = {
+            Column {
+                Text(
+                    text = deletedAtText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = deletionStatus,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = if (isNearDeletion) FontWeight.SemiBold else FontWeight.Normal,
+                    ),
+                    color = if (isNearDeletion) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        },
         trailing = {
             IconButton(onClick = onRestore) {
                 Icon(Icons.Default.Restore, contentDescription = stringResource(R.string.library_restore_desc, recording.name))
@@ -622,14 +731,17 @@ private fun DeletedRecordingItem(
 }
 
 @Composable
-private fun RecordingRow(
+internal fun RecordingRow(
     title: String,
     metadata: String,
     modifier: Modifier = Modifier,
     muted: Boolean = false,
+    urgent: Boolean = false,
     selected: Boolean = false,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     leading: (@Composable () -> Unit)? = null,
+    supportingContent: (@Composable () -> Unit)? = null,
     trailing: @Composable () -> Unit,
     expandedContent: @Composable () -> Unit = {},
 ) {
@@ -650,24 +762,36 @@ private fun RecordingRow(
                 headlineContent = {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = if (urgent) {
+                            MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                        } else {
+                            MaterialTheme.typography.titleMedium
+                        },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else contentColor,
+                        color = when {
+                            urgent -> MaterialTheme.colorScheme.onSurface
+                            muted -> MaterialTheme.colorScheme.onSurfaceVariant
+                            else -> contentColor
+                        },
                     )
                 },
                 supportingContent = {
-                    Text(
-                        text = metadata,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = if (selected) {
-                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
+                    if (supportingContent != null) {
+                        supportingContent()
+                    } else {
+                        Text(
+                            text = metadata,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
                 },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -681,23 +805,57 @@ private fun RecordingRow(
             expandedContent()
         }
     }
+    val shape = MaterialTheme.shapes.large
+    val cardModifier = modifier
+        .fillMaxWidth()
+        .clip(shape)
+        .then(
+            if (onClick != null) {
+                Modifier.combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                    role = Role.Button,
+                )
+            } else {
+                Modifier
+            },
+        )
     if (onClick == null) {
         Card(
-            modifier = modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
+            modifier = cardModifier,
+            shape = shape,
             colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
             content = content,
         )
     } else {
         Card(
-            onClick = onClick,
-            modifier = modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
+            modifier = cardModifier,
+            shape = shape,
             colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
             content = content,
         )
     }
 }
+
+private const val MillisecondsPerDay = 24L * 60L * 60L * 1_000L
+
+internal fun remainingRecycleBinDays(
+    deletedAt: Long?,
+    retentionDays: Int,
+    nowMillis: Long = System.currentTimeMillis(),
+): Int {
+    val normalizedRetentionDays = retentionDays.coerceAtLeast(1)
+    if (deletedAt == null) return normalizedRetentionDays
+    val permanentDeletionAt = deletedAt + normalizedRetentionDays.toLong() * MillisecondsPerDay
+    val remainingMillis = permanentDeletionAt - nowMillis
+    if (remainingMillis <= 0L) return 0
+    return ((remainingMillis + MillisecondsPerDay - 1L) / MillisecondsPerDay).toInt()
+}
+
+internal fun isNearPermanentDeletion(remainingDays: Int): Boolean = remainingDays in 0..3
+
+internal fun Set<Long>.toggle(id: Long): Set<Long> =
+    if (id in this) this - id else this + id
 
 @Composable
 private fun InlinePlaybackPanel(

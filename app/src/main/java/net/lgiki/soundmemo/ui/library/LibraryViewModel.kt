@@ -3,6 +3,7 @@ package net.lgiki.soundmemo.ui.library
 import android.content.Context
 import android.content.ClipData
 import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,10 +23,12 @@ import net.lgiki.soundmemo.domain.player.PlaybackController
 
 data class LibraryUiState(
     val recordings: List<Recording> = emptyList(),
+    val activeRecordings: List<Recording> = emptyList(),
     val activeCount: Int = 0,
     val deleted: List<Recording> = emptyList(),
     val query: String = "",
     val sort: RecordingSort = RecordingSort.Newest,
+    val recycleRetentionDays: Int = 30,
     val rewindSeconds: Int = 10,
     val forwardSeconds: Int = 10,
 )
@@ -58,10 +61,12 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
         val filtered = active.filter { it.name.contains(queryValue, ignoreCase = true) }
         LibraryUiState(
             recordings = filtered.sortedWith(sortValue.comparator()),
+            activeRecordings = active,
             activeCount = active.size,
             deleted = deleted,
             query = queryValue,
             sort = sortValue,
+            recycleRetentionDays = settings.recycleRetentionDays,
             rewindSeconds = settings.rewindSeconds,
             forwardSeconds = settings.forwardSeconds,
         )
@@ -87,6 +92,14 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
         viewModelScope.launch { container.recordingRepository.moveToRecycleBin(id) }
     }
 
+    fun delete(recordings: List<Recording>, onMoved: () -> Unit = {}) {
+        val ids = recordings.map { it.id }
+        viewModelScope.launch {
+            ids.forEach { container.recordingRepository.moveToRecycleBin(it) }
+            onMoved()
+        }
+    }
+
     fun restore(id: Long) {
         viewModelScope.launch { container.recordingRepository.restore(id) }
     }
@@ -105,6 +118,25 @@ class LibraryViewModel(private val container: SoundMemoContainer) : ViewModel() 
             type = shareMimeType(recording.format)
             putExtra(Intent.EXTRA_STREAM, uri)
             clipData = ClipData.newRawUri(null, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, context.getString(R.string.share_title)))
+    }
+
+    fun share(context: Context, recordings: List<Recording>) {
+        if (recordings.size == 1) {
+            share(context, recordings.first())
+            return
+        }
+        val uris = recordings.mapNotNull(container.recordingStorage::shareUri)
+        if (uris.isEmpty()) return
+        val clipData = ClipData.newRawUri(null, uris.first()).apply {
+            uris.drop(1).forEach { addItem(ClipData.Item(it)) }
+        }
+        val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "audio/*"
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList<Uri>(uris))
+            this.clipData = clipData
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, context.getString(R.string.share_title)))

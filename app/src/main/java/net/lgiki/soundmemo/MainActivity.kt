@@ -63,6 +63,7 @@ import net.lgiki.soundmemo.domain.recorder.isRecorderWorkflowActive
 import net.lgiki.soundmemo.ui.SoundMemoViewModelFactory
 import net.lgiki.soundmemo.ui.library.LibraryScreen
 import net.lgiki.soundmemo.ui.library.LibraryViewModel
+import net.lgiki.soundmemo.ui.library.RecycleBinScreen
 import net.lgiki.soundmemo.ui.recorder.RecorderScreen
 import net.lgiki.soundmemo.ui.recorder.RecorderViewModel
 import net.lgiki.soundmemo.ui.settings.PrivacyScreen
@@ -242,6 +243,13 @@ private fun SoundMemoApp(
                     viewModel = libraryViewModel,
                     parentReservesBottomNavigation = parentReservesBottomNavigation,
                     onStartRecording = { navController.navigate("recorder") },
+                    onRecycleBinClick = { navController.navigate("recycle-bin") },
+                )
+            }
+            composable("recycle-bin") {
+                RecycleBinScreen(
+                    viewModel = libraryViewModel,
+                    onNavigateBack = { navController.popBackStack() },
                 )
             }
             composable("settings") {
