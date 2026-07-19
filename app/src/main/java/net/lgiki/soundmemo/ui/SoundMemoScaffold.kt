@@ -23,6 +23,7 @@ fun SoundMemoScaffold(
     title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     contentWindowInsets: WindowInsets = WindowInsets.safeDrawing,
+    forceCompactAppBar: Boolean = false,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
@@ -30,7 +31,7 @@ fun SoundMemoScaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier) {
-        val useCompactAppBar = maxHeight < 600.dp
+        val useCompactAppBar = forceCompactAppBar || maxHeight < 600.dp
         val scrollBehavior = if (useCompactAppBar) {
             TopAppBarDefaults.pinnedScrollBehavior()
         } else {

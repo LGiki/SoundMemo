@@ -1,5 +1,6 @@
 package net.lgiki.soundmemo.ui.recorder
 
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,8 +38,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -100,18 +99,17 @@ fun RecorderScreen(
     val vuMeterValueDisplay by viewModel.vuMeterValueDisplay.collectAsStateWithLifecycle()
     val audioInputDevices by viewModel.audioInputDevices.collectAsStateWithLifecycle()
     val presentedStatus = rememberPresentedRecorderStatus(state.status)
-    val snackbar = remember { SnackbarHostState() }
     var showAudioInputDialog by remember { mutableStateOf(false) }
     var showDiscardConfirmDialog by remember { mutableStateOf(false) }
     LaunchedEffect(state.message) {
         state.message?.let {
-            snackbar.showSnackbar(it)
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.consumeMessage()
         }
     }
     SoundMemoScaffold(
         title = { Text(stringResource(R.string.recorder_title)) },
-        snackbarHost = { SnackbarHost(snackbar) },
+        forceCompactAppBar = true,
         bottomBar = {
             RecorderActionBar {
                 RecorderControls(
@@ -189,16 +187,14 @@ private fun rememberPresentedRecorderStatus(status: RecorderStatus): RecorderSta
 
 @Composable
 private fun RecorderActionBar(content: @Composable () -> Unit) {
-    Surface(tonalElevation = 3.dp) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(modifier = Modifier.widthIn(max = 1_200.dp).fillMaxWidth()) {
-                content()
-            }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(modifier = Modifier.widthIn(max = 1_200.dp).fillMaxWidth()) {
+            content()
         }
     }
 }
