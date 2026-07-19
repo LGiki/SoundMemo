@@ -38,7 +38,7 @@ import net.lgiki.soundmemo.data.storage.RecordingNameTemplate
 import net.lgiki.soundmemo.data.storage.RecordingSaveResult
 import net.lgiki.soundmemo.data.repository.RecordingPartSave
 import net.lgiki.soundmemo.domain.recorder.RecordingFormat
-import net.lgiki.soundmemo.domain.recorder.RecordingLocation
+import net.lgiki.soundmemo.domain.recorder.RecordingLocationCapture
 import net.lgiki.soundmemo.domain.recorder.RecordingLocationProvider
 import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.RecorderUiState
@@ -61,7 +61,7 @@ class RecordingService : LifecycleService() {
     private var outputFormat: RecordingFormat? = null
     private var outputBitrate: Int = 0
     private var outputSampleRate: Int = 0
-    private var recordingLocation: RecordingLocation? = null
+    private var recordingLocationCapture: RecordingLocationCapture? = null
     @Volatile private var isStarting = false
     private val teardownGate = RecordingTeardownGate()
     private var pendingStopSave: Boolean? = null
@@ -71,6 +71,8 @@ class RecordingService : LifecycleService() {
     private var ticker: Job? = null
     private var startupJob: Job? = null
     private var startupTimeoutJob: Job? = null
+    private var startupAttempt: RecordingStartupGate? = null
+    private var locationJob: Job? = null
 
     private val container by lazy { (application as SoundMemoApplication).container }
 
@@ -87,9 +89,12 @@ class RecordingService : LifecycleService() {
 
     override fun onDestroy() {
         isStarting = false
+        startupAttempt?.tryCancel()
+        startupAttempt = null
         ticker?.cancel()
         startupJob?.cancel()
         startupTimeoutJob?.cancel()
+        locationJob?.cancel()
         val currentState = RecordingStateHolder.state.value
         if (isRecorderWorkflowActive(currentState.status) && teardownGate.tryClaim()) {
             val activeRecorder = recorder
@@ -179,24 +184,38 @@ class RecordingService : LifecycleService() {
             stopSelf()
             return
         }
-        val job = lifecycleScope.launch(start = CoroutineStart.LAZY) {
+        val attempt = RecordingStartupGate()
+        val locationCapture = RecordingLocationCapture()
+        startupAttempt = attempt
+        recordingLocationCapture = locationCapture
+        locationJob = if (captureLocation) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                val location = RecordingLocationProvider.currentLocation(this@RecordingService)
+                if (location != null) {
+                    withContext(Dispatchers.Main.immediate) {
+                        if (
+                            recordingLocationCapture === locationCapture &&
+                            isRecorderWorkflowActive(RecordingStateHolder.state.value.status)
+                        ) {
+                            locationCapture.update(location)
+                        }
+                    }
+                }
+            }
+        } else {
+            null
+        }
+        val job = lifecycleScope.launch(Dispatchers.IO, start = CoroutineStart.LAZY) {
             var recordingBackend: AudioRecordingBackend? = null
             var file: File? = null
-            var started = false
+            var ownershipTransferred = false
             try {
-                val location = if (captureLocation) {
-                    RecordingLocationProvider.currentLocation(this@RecordingService)
-                } else {
-                    null
-                }
-                if (pendingStopSave != null) {
-                    pendingStopSave = null
-                    RecordingStateHolder.set(RecorderUiState(status = RecorderStatus.Idle))
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf()
-                    return@launch
-                }
                 val settings = container.settingsRepository.settings.first()
+                if (captureLocation) {
+                    locationCapture.update(
+                        RecordingLocationProvider.lastKnownLocation(this@RecordingService),
+                    )
+                }
                 val recordingFormat = settings.recordingFormat
                 val recordingBitrate = recordingFormat.bitrateFor(settings.bitrate)
                 val recordingSampleRate = recordingFormat.sampleRateFor(settings.sampleRate)
@@ -212,6 +231,7 @@ class RecordingService : LifecycleService() {
                     extension = recordingFormat.extension,
                 )
                 val createdFile = container.recordingStorage.createTempOutputFile(generatedName)
+                file = createdFile
                 val startedBackend = startWithMonoFallback(
                     requestedChannels = recordingChannels,
                     beforeRetry = { createdFile.delete() },
@@ -234,73 +254,113 @@ class RecordingService : LifecycleService() {
                             bitrate = recordingBitrate,
                             sampleRate = recordingSampleRate,
                             channels = activeChannels,
-                            location = location,
+                            location = locationCapture.latest(),
                             writeLocationToMediaFile = settings.writeLocationToMediaFile,
                             preferredDevice = preferredAudioDevice,
                         )
                     }
                 }
                 val createdRecorder = startedBackend.backend
-                file = createdFile
                 recordingBackend = createdRecorder
-                recorder = createdRecorder
-                outputFile = createdFile
-                outputGeneratedName = generatedName
-                outputDisplayName = generatedName.displayName
-                outputFormat = recordingFormat
-                outputBitrate = recordingFormat.recordedBitrateFor(
-                    configuredBitrate = settings.bitrate,
-                    channelCount = startedBackend.channels.channelCount,
-                )
-                outputSampleRate = recordingSampleRate
-                recordingLocation = location
-                started = true
-                startedAt = SystemClock.elapsedRealtime()
-                pausedAt = 0L
-                pausedTotal = 0L
-                RecordingStateHolder.set(
-                    RecorderUiState(
-                        status = RecorderStatus.Recording,
-                        preferredAudioInput = preferredAudioInput,
-                        actualAudioInput = createdRecorder.routedDevice,
-                        message = if (startedBackend.fellBackToMono) {
-                            getString(R.string.recorder_stereo_fallback_message)
-                        } else {
-                            null
-                        },
-                    ),
-                )
-                startTicker()
-                isStarting = false
-                pendingStopSave?.let { save ->
-                    pendingStopSave = null
-                    stopRecording(save)
+                if (!attempt.tryCommit()) return@launch
+                withContext(Dispatchers.Main.immediate) {
+                    if (
+                        startupAttempt !== attempt ||
+                        RecordingStateHolder.state.value.status != RecorderStatus.Starting
+                    ) {
+                        return@withContext
+                    }
+                    recorder = createdRecorder
+                    outputFile = createdFile
+                    outputGeneratedName = generatedName
+                    outputDisplayName = generatedName.displayName
+                    outputFormat = recordingFormat
+                    outputBitrate = recordingFormat.recordedBitrateFor(
+                        configuredBitrate = settings.bitrate,
+                        channelCount = startedBackend.channels.channelCount,
+                    )
+                    outputSampleRate = recordingSampleRate
+                    startedAt = SystemClock.elapsedRealtime()
+                    pausedAt = 0L
+                    pausedTotal = 0L
+                    ownershipTransferred = true
+                    RecordingStateHolder.set(
+                        RecorderUiState(
+                            status = RecorderStatus.Recording,
+                            preferredAudioInput = preferredAudioInput,
+                            actualAudioInput = createdRecorder.routedDevice,
+                            message = if (startedBackend.fellBackToMono) {
+                                getString(R.string.recorder_stereo_fallback_message)
+                            } else {
+                                null
+                            },
+                        ),
+                    )
+                    startTicker()
+                    isStarting = false
+                    pendingStopSave?.let { save ->
+                        pendingStopSave = null
+                        stopRecording(save)
+                    }
                 }
             } catch (exception: CancellationException) {
                 throw exception
             } catch (throwable: Throwable) {
-                handleStartFailure(throwable, started, recordingBackend, file)
+                if (attempt.tryCancel()) {
+                    withContext(NonCancellable + Dispatchers.Main.immediate) {
+                        if (startupAttempt === attempt) {
+                            RecordingStateHolder.set(
+                                RecorderUiState(
+                                    status = RecorderStatus.Error,
+                                    message = throwable.localizedMessage
+                                        ?: getString(R.string.recorder_start_failed),
+                                ),
+                            )
+                            stopForeground(STOP_FOREGROUND_REMOVE)
+                            stopSelf()
+                        }
+                    }
+                }
             } finally {
-                isStarting = false
-                startupJob = null
-                startupTimeoutJob?.cancel()
-                startupTimeoutJob = null
+                if (!ownershipTransferred) {
+                    runCatching { recordingBackend?.release() }
+                    file?.let(::deleteStagedRecordingOutputs)
+                }
+                withContext(NonCancellable + Dispatchers.Main.immediate) {
+                    if (startupAttempt === attempt) {
+                        isStarting = false
+                        startupAttempt = null
+                        startupJob = null
+                        startupTimeoutJob?.cancel()
+                        startupTimeoutJob = null
+                    }
+                }
             }
         }
         startupJob = job
         startupTimeoutJob?.cancel()
         startupTimeoutJob = lifecycleScope.launch {
             delay(START_TIMEOUT_MS)
-            timeoutStartingRecording()
+            timeoutStartingRecording(attempt)
         }
         job.start()
     }
 
-    private fun timeoutStartingRecording() {
-        if (RecordingStateHolder.state.value.status != RecorderStatus.Starting) return
+    private fun timeoutStartingRecording(attempt: RecordingStartupGate) {
+        if (
+            startupAttempt !== attempt ||
+            RecordingStateHolder.state.value.status != RecorderStatus.Starting ||
+            !attempt.tryCancel()
+        ) {
+            return
+        }
         startupJob?.cancel()
         startupJob = null
         startupTimeoutJob = null
+        startupAttempt = null
+        locationJob?.cancel()
+        locationJob = null
+        recordingLocationCapture = null
         isStarting = false
         pendingStopSave = null
         RecordingStateHolder.set(
@@ -353,29 +413,6 @@ class RecordingService : LifecycleService() {
         }
     }
 
-    private fun handleStartFailure(
-        exception: Throwable,
-        started: Boolean,
-        recordingBackend: AudioRecordingBackend?,
-        file: File?,
-    ) {
-        if (!teardownGate.tryClaim()) return
-        ticker?.cancel()
-        lifecycleScope.launch(Dispatchers.IO) {
-            withContext(NonCancellable) {
-                try {
-                    if (started) {
-                        runCatching { recordingBackend?.stop() }
-                    }
-                    finishFailedRecording(exception, file, releaseTeardownGate = false)
-                } finally {
-                    teardownGate.release()
-                    stopSelf()
-                }
-            }
-        }
-    }
-
     private fun finishFailedRecording(
         exception: Throwable,
         file: File?,
@@ -412,6 +449,8 @@ class RecordingService : LifecycleService() {
         }
         RecordingStateHolder.update { it.copy(status = RecorderStatus.Saving, amplitude = 0) }
         ticker?.cancel()
+        locationJob?.cancel()
+        locationJob = null
         lifecycleScope.launch(Dispatchers.IO) {
             withContext(NonCancellable) {
                 val file = outputFile
@@ -421,7 +460,7 @@ class RecordingService : LifecycleService() {
                 val activeBitrate = outputBitrate
                 val activeSampleRate = outputSampleRate
                 val elapsed = currentElapsed()
-                val location = recordingLocation
+                val location = recordingLocationCapture?.latest()
                 val saveResults = mutableListOf<RecordingSaveResult>()
                 var recordedOutputs: List<RecordedOutput> = emptyList()
                 var savedConfirmationMessage: String? = null
@@ -587,7 +626,9 @@ class RecordingService : LifecycleService() {
         outputFormat = null
         outputBitrate = 0
         outputSampleRate = 0
-        recordingLocation = null
+        recordingLocationCapture = null
+        locationJob?.cancel()
+        locationJob = null
         isStarting = false
         pendingStopSave = null
         startedAt = 0L
@@ -745,7 +786,7 @@ class RecordingService : LifecycleService() {
         private const val SAVED_CONFIRMATION_TIMEOUT_MS = 4_000L
         private const val MAX_PCM_AMPLITUDE = 32767f
         private const val ROUTE_REFRESH_TICKS = 4
-        private const val START_TIMEOUT_MS = 10_000L
+        private const val START_TIMEOUT_MS = 5_000L
         const val ACTION_START = "net.lgiki.soundmemo.START_RECORDING"
         const val ACTION_PAUSE = "net.lgiki.soundmemo.PAUSE_RECORDING"
         const val ACTION_RESUME = "net.lgiki.soundmemo.RESUME_RECORDING"

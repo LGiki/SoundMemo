@@ -98,6 +98,7 @@
     <string name="library_property_location_captured">Location captured</string>
 
     <!-- Sort Labels -->
+    <string name="library_sort_by">Sort: %1$s</string>
     <string name="sort_newest">Newest</string>
     <string name="sort_oldest">Oldest</string>
     <string name="sort_name">Name</string>
@@ -180,7 +181,7 @@
     <string name="settings_record_location">Save recording location</string>
     <string name="settings_record_location_desc">Save coordinates in SoundMemo for new recordings.</string>
     <string name="settings_write_location_to_media_file">Write location to audio file</string>
-    <string name="settings_write_location_to_media_file_desc">Include coordinates in supported audio metadata when sharing or exporting recordings.</string>
+    <string name="settings_write_location_to_media_file_desc">Include coordinates in supported audio metadata when a recent location is available as recording starts.</string>
     <string name="settings_local_only">Local-first recordings</string>
     <string name="settings_local_only_desc">SoundMemo has no account, ads, analytics, or in-app cloud upload. Android system backup or device transfer may include app preferences if enabled. App-file recordings and the library database are excluded; device storage recordings remain in Music/SoundMemo.</string>
     <string name="privacy_claims_title">Privacy summary</string>

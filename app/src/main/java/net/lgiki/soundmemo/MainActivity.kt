@@ -240,6 +240,7 @@ private fun SoundMemoApp(
             composable("library") {
                 LibraryScreen(
                     viewModel = libraryViewModel,
+                    parentReservesBottomNavigation = parentReservesBottomNavigation,
                     onStartRecording = { navController.navigate("recorder") },
                 )
             }

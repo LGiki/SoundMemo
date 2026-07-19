@@ -31,6 +31,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFloatingActionButton
@@ -62,6 +63,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import net.lgiki.soundmemo.R
 import net.lgiki.soundmemo.ui.AdaptiveContent
 import net.lgiki.soundmemo.ui.SingleChoiceDialog
@@ -84,6 +86,7 @@ import kotlin.math.sqrt
 private const val MIN_WAVEFORM_LEVEL = 0.08f
 private const val VU_SEGMENT_COUNT = 20
 private const val MAX_VU_AMPLITUDE = 32767f
+private const val STARTING_INDICATOR_DELAY_MS = 200L
 
 @Composable
 fun RecorderScreen(
@@ -96,6 +99,7 @@ fun RecorderScreen(
     val recorderVisualization by viewModel.recorderVisualization.collectAsStateWithLifecycle()
     val vuMeterValueDisplay by viewModel.vuMeterValueDisplay.collectAsStateWithLifecycle()
     val audioInputDevices by viewModel.audioInputDevices.collectAsStateWithLifecycle()
+    val presentedStatus = rememberPresentedRecorderStatus(state.status)
     val snackbar = remember { SnackbarHostState() }
     var showAudioInputDialog by remember { mutableStateOf(false) }
     var showDiscardConfirmDialog by remember { mutableStateOf(false) }
@@ -112,6 +116,7 @@ fun RecorderScreen(
             RecorderActionBar {
                 RecorderControls(
                     status = state.status,
+                    presentedStatus = presentedStatus,
                     onRecordRequest = onRecordRequest,
                     onPause = { viewModel.pause(context) },
                     onResume = { viewModel.resume(context) },
@@ -130,17 +135,17 @@ fun RecorderScreen(
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 RecordingStatusPanel(
-                elapsedMs = state.elapsedMs,
-                status = state.status,
-                amplitude = state.amplitude,
-                waveform = state.waveform,
-                recorderVisualization = recorderVisualization,
-                vuMeterValueDisplay = vuMeterValueDisplay,
-                preferredAudioInput = state.preferredAudioInput ?: preferredAudioInput,
-                actualAudioInput = state.actualAudioInput,
-                onPreferredAudioInputClick = { showAudioInputDialog = true },
-                onRecorderVisualizationChange = viewModel::setRecorderVisualization,
-                onVuMeterValueClick = viewModel::cycleVuMeterValueDisplay,
+                    elapsedMs = state.elapsedMs,
+                    status = presentedStatus,
+                    amplitude = state.amplitude,
+                    waveform = state.waveform,
+                    recorderVisualization = recorderVisualization,
+                    vuMeterValueDisplay = vuMeterValueDisplay,
+                    preferredAudioInput = state.preferredAudioInput ?: preferredAudioInput,
+                    actualAudioInput = state.actualAudioInput,
+                    onPreferredAudioInputClick = { showAudioInputDialog = true },
+                    onRecorderVisualizationChange = viewModel::setRecorderVisualization,
+                    onVuMeterValueClick = viewModel::cycleVuMeterValueDisplay,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -166,6 +171,20 @@ fun RecorderScreen(
             onDismiss = { showAudioInputDialog = false },
         )
     }
+}
+
+@Composable
+private fun rememberPresentedRecorderStatus(status: RecorderStatus): RecorderStatus {
+    var presentedStatus by remember {
+        mutableStateOf(if (status == RecorderStatus.Starting) RecorderStatus.Idle else status)
+    }
+    LaunchedEffect(status) {
+        if (status == RecorderStatus.Starting) {
+            delay(STARTING_INDICATOR_DELAY_MS)
+        }
+        presentedStatus = status
+    }
+    return presentedStatus
 }
 
 @Composable
@@ -543,6 +562,7 @@ private fun DiscardRecordingDialog(
 @Composable
 private fun RecorderControls(
     status: RecorderStatus,
+    presentedStatus: RecorderStatus,
     onRecordRequest: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -558,13 +578,23 @@ private fun RecorderControls(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            when (status) {
+            if (status == RecorderStatus.Starting && presentedStatus != RecorderStatus.Starting) {
+                Spacer(Modifier.size(96.dp))
+                return@Row
+            }
+            when (presentedStatus) {
                 RecorderStatus.Idle, RecorderStatus.Saved, RecorderStatus.Error -> {
                     LargeFloatingActionButton(
                         onClick = onRecordRequest,
                         modifier = Modifier.size(96.dp),
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError,
+                        elevation = FloatingActionButtonDefaults.elevation(
+                            defaultElevation = 0.dp,
+                            pressedElevation = 0.dp,
+                            focusedElevation = 0.dp,
+                            hoveredElevation = 0.dp,
+                        ),
                     ) {
                         Icon(
                             Icons.Default.Mic,
@@ -574,10 +604,16 @@ private fun RecorderControls(
                     }
                 }
                 RecorderStatus.Starting -> {
-                    Text(
-                        text = stringResource(R.string.notification_text_starting),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
+                    Box(
+                        modifier = Modifier.size(96.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.notification_text_starting),
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
                 RecorderStatus.Recording -> {
                     TransportButton(
@@ -601,7 +637,7 @@ private fun RecorderControls(
                 }
             }
         }
-        if (status == RecorderStatus.Recording || status == RecorderStatus.Paused) {
+        if (presentedStatus == RecorderStatus.Recording || presentedStatus == RecorderStatus.Paused) {
             OutlinedButton(onClick = onDiscardClick) {
                 Icon(Icons.Default.Delete, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
@@ -621,6 +657,12 @@ private fun TransportButton(
         modifier = Modifier.size(68.dp),
         containerColor = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        elevation = FloatingActionButtonDefaults.elevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            focusedElevation = 0.dp,
+            hoveredElevation = 0.dp,
+        ),
     ) {
         icon()
     }
@@ -633,6 +675,12 @@ private fun StopButton(onClick: () -> Unit) {
         modifier = Modifier.size(68.dp),
         containerColor = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary,
+        elevation = FloatingActionButtonDefaults.elevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            focusedElevation = 0.dp,
+            hoveredElevation = 0.dp,
+        ),
     ) {
         Icon(Icons.Default.Stop, contentDescription = stringResource(R.string.recorder_stop_save), modifier = Modifier.size(30.dp))
     }

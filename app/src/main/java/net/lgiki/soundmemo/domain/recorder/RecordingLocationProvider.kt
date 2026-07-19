@@ -30,8 +30,15 @@ object RecordingLocationProvider {
         return withContext(Dispatchers.IO) {
             withTimeoutOrNull(LOCATION_TIMEOUT_MS) {
                 currentLocation(appContext, manager)
-            } ?: lastKnownLocation(appContext, manager)
+            } ?: lastKnownLocation(manager, permittedProviders(appContext))
         }
+    }
+
+    internal fun lastKnownLocation(context: Context): RecordingLocation? {
+        val appContext = context.applicationContext
+        if (!hasLocationPermission(appContext)) return null
+        val manager = appContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+        return lastKnownLocation(manager, permittedProviders(appContext))
     }
 
     fun hasLocationPermission(context: Context): Boolean =
@@ -97,8 +104,8 @@ object RecordingLocationProvider {
         }
 
     @SuppressLint("MissingPermission")
-    private fun lastKnownLocation(context: Context, manager: LocationManager): RecordingLocation? =
-        permittedProviders(context)
+    private fun lastKnownLocation(manager: LocationManager, providers: List<String>): RecordingLocation? =
+        providers
             .filter { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
             .mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
             .filter { location -> isLocationTimestampFresh(location.time) }

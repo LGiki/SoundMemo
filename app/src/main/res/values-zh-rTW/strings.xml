@@ -97,6 +97,7 @@
     <string name="library_property_location_captured">位置記錄時間</string>
 
     <!-- Sort Labels -->
+    <string name="library_sort_by">排序：%1$s</string>
     <string name="sort_newest">最新</string>
     <string name="sort_oldest">最早</string>
     <string name="sort_name">名稱</string>
@@ -176,7 +177,7 @@
     <string name="settings_record_location">儲存錄音位置</string>
     <string name="settings_record_location_desc">將新錄音的座標儲存在 SoundMemo 中。</string>
     <string name="settings_write_location_to_media_file">將位置寫入音訊檔案</string>
-    <string name="settings_write_location_to_media_file_desc">分享或匯出錄音時，在支援的音訊中繼資料中包含座標。</string>
+    <string name="settings_write_location_to_media_file_desc">如果錄音開始時有最近的位置資訊，則在支援的音訊中繼資料中包含座標。</string>
     <string name="settings_local_only">本機優先錄音</string>
     <string name="settings_local_only_desc">SoundMemo 無帳號、無廣告、無分析，也不會在應用程式內上傳到雲端。如果啟用了 Android 系統備份或裝置轉移，應用程式偏好設定可能會被包含在內。應用程式檔案中的錄音和資料庫會被排除；裝置儲存空間中的錄音會保留在 Music/SoundMemo。</string>
     <string name="privacy_claims_title">隱私摘要</string>
