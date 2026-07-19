@@ -32,8 +32,6 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -216,56 +214,69 @@ private fun RecordingStatusPanel(
     onVuMeterValueClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val compactHeight = maxHeight < 260.dp
-            Column(
+    BoxWithConstraints(modifier = modifier) {
+        val compactHeight = maxHeight < 260.dp
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            RecordingHeaderRow(
+                elapsedMs = elapsedMs,
+                status = status,
+                compact = compactHeight,
+            )
+            Surface(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = if (compactHeight) 10.dp else 20.dp),
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(top = if (compactHeight) 8.dp else 20.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
             ) {
-                RecordingHeaderRow(
-                    elapsedMs = elapsedMs,
-                    status = status,
-                    recorderVisualization = recorderVisualization,
-                    onRecorderVisualizationChange = onRecorderVisualizationChange,
-                    compact = compactHeight,
-                )
-                AudioInputLine(
-                    status = status,
-                    preferredAudioInput = preferredAudioInput,
-                    actualAudioInput = actualAudioInput,
-                    onPreferredAudioInputClick = onPreferredAudioInputClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = if (compactHeight) 4.dp else 12.dp),
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(top = if (compactHeight) 4.dp else 20.dp),
-                ) {
-                    when (recorderVisualization) {
-                        RecorderVisualization.Waveform -> RecordingWaveform(
-                            waveform = waveform,
-                            status = status,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                        RecorderVisualization.VuMeter -> RecordingVuMeter(
-                            amplitude = amplitude,
-                            status = status,
-                            valueDisplay = vuMeterValueDisplay,
-                            onValueClick = onVuMeterValueClick,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    RecorderVisualizationIconButton(
+                        visualization = recorderVisualization,
+                        onVisualizationChange = onRecorderVisualizationChange,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(
+                                start = 20.dp,
+                                top = if (compactHeight) 44.dp else 56.dp,
+                                end = 20.dp,
+                                bottom = 20.dp,
+                            ),
+                    ) {
+                        when (recorderVisualization) {
+                            RecorderVisualization.Waveform -> RecordingWaveform(
+                                waveform = waveform,
+                                status = status,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                            RecorderVisualization.VuMeter -> RecordingVuMeter(
+                                amplitude = amplitude,
+                                status = status,
+                                valueDisplay = vuMeterValueDisplay,
+                                onValueClick = onVuMeterValueClick,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
                     }
                 }
             }
+            AudioInputLine(
+                status = status,
+                preferredAudioInput = preferredAudioInput,
+                actualAudioInput = actualAudioInput,
+                onPreferredAudioInputClick = onPreferredAudioInputClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = if (compactHeight) 8.dp else 16.dp),
+            )
         }
     }
 }
@@ -274,8 +285,6 @@ private fun RecordingStatusPanel(
 private fun RecordingHeaderRow(
     elapsedMs: Long,
     status: RecorderStatus,
-    recorderVisualization: RecorderVisualization,
-    onRecorderVisualizationChange: (RecorderVisualization) -> Unit,
     compact: Boolean,
 ) {
     if (compact) {
@@ -289,35 +298,23 @@ private fun RecordingHeaderRow(
                 text = formatDuration(elapsedMs),
                 style = MaterialTheme.typography.displaySmall,
                 color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
+                textAlign = TextAlign.End,
                 modifier = Modifier.weight(1f),
-            )
-            RecorderVisualizationIconButton(
-                visualization = recorderVisualization,
-                onVisualizationChange = onRecorderVisualizationChange,
             )
         }
         return
     }
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            RecordingStatusBadge(status)
-            Text(
-                text = formatDuration(elapsedMs),
-                style = MaterialTheme.typography.displayMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-            )
-        }
-        RecorderVisualizationIconButton(
-            visualization = recorderVisualization,
-            onVisualizationChange = onRecorderVisualizationChange,
-            modifier = Modifier.align(Alignment.TopEnd),
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = formatDuration(elapsedMs),
+            style = MaterialTheme.typography.displayMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
         )
+        RecordingStatusBadge(status)
     }
 }
 
@@ -332,37 +329,29 @@ private fun RecordingStatusBadge(status: RecorderStatus) {
         RecorderStatus.Saved -> stringResource(R.string.recorder_status_saved)
         RecorderStatus.Error -> stringResource(R.string.recorder_status_error)
     }
-    val isErrorState = status == RecorderStatus.Recording || status == RecorderStatus.Error
-    val containerColor = when {
-        isErrorState -> MaterialTheme.colorScheme.errorContainer
-        status == RecorderStatus.Paused -> MaterialTheme.colorScheme.tertiaryContainer
-        else -> MaterialTheme.colorScheme.surfaceContainerHigh
-    }
-    val contentColor = when {
-        isErrorState -> MaterialTheme.colorScheme.onErrorContainer
-        status == RecorderStatus.Paused -> MaterialTheme.colorScheme.onTertiaryContainer
+    val contentColor = when (status) {
+        RecorderStatus.Recording, RecorderStatus.Error -> MaterialTheme.colorScheme.error
+        RecorderStatus.Paused -> MaterialTheme.colorScheme.tertiary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    Surface(
-        shape = CircleShape,
-        color = containerColor,
-        contentColor = contentColor,
+    Row(
+        modifier = Modifier.heightIn(min = 32.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (status == RecorderStatus.Recording) {
-                Surface(
-                    modifier = Modifier.size(8.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.error,
-                    content = {},
-                )
-            }
-            Text(text = label, style = MaterialTheme.typography.labelLarge)
+        if (status == RecorderStatus.Recording) {
+            Surface(
+                modifier = Modifier.size(8.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.error,
+                content = {},
+            )
         }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = contentColor,
+        )
     }
 }
 
@@ -655,25 +644,11 @@ private fun RecorderControls(
                 }
             }
         }
-        Crossfade(
-            targetState = controlMode == RecorderControlMode.Active,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            animationSpec = tween(durationMillis = 120),
-            label = "Discard control",
-        ) { showDiscard ->
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (showDiscard) {
-                    OutlinedButton(onClick = onDiscardClick) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
-                        Spacer(Modifier.size(8.dp))
-                        Text(stringResource(R.string.recorder_discard))
-                    }
-                }
+        if (controlMode == RecorderControlMode.Active) {
+            OutlinedButton(onClick = onDiscardClick) {
+                Icon(Icons.Default.Delete, contentDescription = null)
+                Spacer(Modifier.size(8.dp))
+                Text(stringResource(R.string.recorder_discard))
             }
         }
     }
@@ -746,6 +721,7 @@ private fun RecordingVuMeter(
         visibleLevel = level,
     )
     val valueDescription = stringResource(R.string.recorder_vu_meter_value_desc, valueText)
+    val valueLabel = stringResource(R.string.recorder_vu_meter_value_label)
     val activeSegmentCount = if (level > 0f) {
         (level * VU_SEGMENT_COUNT).toInt().coerceIn(1, VU_SEGMENT_COUNT)
     } else {
@@ -769,11 +745,20 @@ private fun RecordingVuMeter(
                 .clickable(onClick = onValueClick)
                 .semantics { contentDescription = valueDescription },
         ) {
-            Text(
-                text = valueText,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
-            )
+            Column(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = valueLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = valueText,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
         }
         Canvas(
             modifier = Modifier

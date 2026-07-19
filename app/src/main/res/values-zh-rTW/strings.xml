@@ -17,6 +17,7 @@
     <string name="recorder_switch_to_waveform">顯示波形</string>
     <string name="recorder_switch_to_vu_meter">顯示 VU 表</string>
     <string name="recorder_vu_meter_value_desc">輸入電平：%1$s。點按可切換數值類型。</string>
+    <string name="recorder_vu_meter_value_label">輸入電平</string>
     <string name="recorder_vu_meter_value_percent">%1$d%%</string>
     <string name="recorder_vu_meter_value_db">%1$d dB</string>
     <string name="recorder_vu_meter_value_db_silent">-∞ dB</string>

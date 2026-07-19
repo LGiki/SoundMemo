@@ -17,6 +17,7 @@
     <string name="recorder_switch_to_waveform">Show waveform</string>
     <string name="recorder_switch_to_vu_meter">Show VU meter</string>
     <string name="recorder_vu_meter_value_desc">Input level: %1$s. Tap to change value type.</string>
+    <string name="recorder_vu_meter_value_label">Input level</string>
     <string name="recorder_vu_meter_value_percent">%1$d%%</string>
     <string name="recorder_vu_meter_value_db">%1$d dB</string>
     <string name="recorder_vu_meter_value_db_silent">-∞ dB</string>
