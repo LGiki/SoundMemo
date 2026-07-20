@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -193,7 +194,7 @@ fun LibraryScreen(
                     shape = MaterialTheme.shapes.large,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (!selectionMode) SortRow(state.sort, viewModel::setSort)
+                SortRow(state.sort, viewModel::setSort)
                 if (shouldShowEmptyLibrary(state.activeCount)) {
                     EmptyLibrary(onStartRecording = onStartRecording, modifier = Modifier.weight(1f))
                 } else {
@@ -402,24 +403,31 @@ private fun RecordingItem(
         onClick = if (selectionMode) onSelectionChange else onPlay,
         onLongClick = onSelectionChange,
         leading = {
-            if (selectionMode) {
-                Checkbox(
-                    checked = multiSelected,
-                    onCheckedChange = { onSelectionChange() },
-                    modifier = Modifier.semantics {
-                        contentDescription = selectionDescription
-                    },
-                )
-            } else {
-                FilledTonalIconButton(onClick = onPlay, modifier = Modifier.size(44.dp)) {
-                    Icon(
-                        if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) {
-                            stringResource(R.string.player_pause)
-                        } else {
-                            stringResource(R.string.library_play_desc, recording.name)
+            // Keep ListItem's text column fixed while swapping the 44 dp play control
+            // for the checkbox's 48 dp minimum touch target.
+            Box(
+                modifier = Modifier.width(48.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (selectionMode) {
+                    Checkbox(
+                        checked = multiSelected,
+                        onCheckedChange = { onSelectionChange() },
+                        modifier = Modifier.semantics {
+                            contentDescription = selectionDescription
                         },
                     )
+                } else {
+                    FilledTonalIconButton(onClick = onPlay, modifier = Modifier.size(44.dp)) {
+                        Icon(
+                            if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isPlaying) {
+                                stringResource(R.string.player_pause)
+                            } else {
+                                stringResource(R.string.library_play_desc, recording.name)
+                            },
+                        )
+                    }
                 }
             }
         },
