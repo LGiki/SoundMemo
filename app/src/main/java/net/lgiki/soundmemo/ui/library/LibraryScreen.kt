@@ -58,8 +58,6 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -76,7 +74,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -388,22 +385,25 @@ private fun RecordingItem(
     val context = LocalContext.current
     var menuOpen by remember { mutableStateOf(false) }
     var renameOpen by remember { mutableStateOf(false) }
-    val location = formatRecordingLocation(recording)
     val isPlaying = playerState?.isPlaying == true
+    val rowSelected = if (selectionMode) multiSelected else playerState != null
     val selectionDescription = stringResource(R.string.library_toggle_selection_desc, recording.name)
     RecordingRow(
         title = recording.name,
-        metadata = listOfNotNull(
-            formatDateTime(recording.createdAt),
-            formatDuration(recording.durationMs),
-            formatFileSize(recording.fileSizeBytes),
-            location?.let { stringResource(R.string.recording_location_coordinates, it) },
-        ).joinToString(" - "),
-        selected = if (selectionMode) multiSelected else playerState != null,
+        metadata = "",
+        supportingContent = {
+            RecordingMetadata(
+                createdAt = formatDateTime(recording.createdAt),
+                duration = formatDuration(recording.durationMs),
+                fileSize = formatFileSize(recording.fileSizeBytes),
+                selected = rowSelected,
+            )
+        },
+        selected = rowSelected,
         onClick = if (selectionMode) onSelectionChange else onPlay,
         onLongClick = onSelectionChange,
         leading = {
-            // Keep ListItem's text column fixed while swapping the 44 dp play control
+            // Keep the text column stable while swapping the 44 dp play control
             // for the checkbox's 48 dp minimum touch target.
             Box(
                 modifier = Modifier.width(48.dp),
@@ -511,6 +511,43 @@ private fun RecordingItem(
                 TextButton(onClick = { renameOpen = false }) { Text(stringResource(R.string.library_cancel)) }
             },
         )
+    }
+}
+
+@Composable
+private fun RecordingMetadata(
+    createdAt: String,
+    duration: String,
+    fileSize: String,
+    selected: Boolean,
+) {
+    val metadataColor = if (selected) {
+        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = createdAt,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = metadataColor,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "$duration - ",
+                style = MaterialTheme.typography.bodySmall,
+                color = metadataColor,
+            )
+            Text(
+                text = fileSize,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = metadataColor,
+            )
+        }
     }
 }
 
@@ -765,9 +802,17 @@ internal fun RecordingRow(
     }
     val content: @Composable ColumnScope.() -> Unit = {
         Column {
-            ListItem(
-                leadingContent = leading,
-                headlineContent = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                leading?.let {
+                    it()
+                    Spacer(Modifier.width(12.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
                         style = if (urgent) {
@@ -783,8 +828,6 @@ internal fun RecordingRow(
                             else -> contentColor
                         },
                     )
-                },
-                supportingContent = {
                     if (supportingContent != null) {
                         supportingContent()
                     } else {
@@ -800,16 +843,10 @@ internal fun RecordingRow(
                             },
                         )
                     }
-                },
-                trailingContent = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        trailing()
-                    }
-                },
-                colors = ListItemDefaults.colors(
-                    containerColor = Color.Transparent,
-                ),
-            )
+                }
+                Spacer(Modifier.width(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) { trailing() }
+            }
             expandedContent()
         }
     }
