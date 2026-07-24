@@ -67,6 +67,7 @@ class PlaybackController(
         val uri = recordingStorage.playbackUri(recording)
         if (uri == null) {
             player.stop()
+            player.clearMediaItems()
             mutableState.value = unavailableRecordingState(
                 previous = mutableState.value,
                 recording = recording,
@@ -81,6 +82,7 @@ class PlaybackController(
     }
 
     fun toggle() {
+        if (mutableState.value.error != null || player.mediaItemCount == 0) return
         if (player.isPlaying) {
             player.pause()
         } else {

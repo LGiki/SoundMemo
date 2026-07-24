@@ -421,7 +421,10 @@ fun SettingsScreen(
                         headline = stringResource(R.string.settings_source_repo),
                         supporting = SOURCE_REPO_URL,
                         onClick = {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SOURCE_REPO_URL)))
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(SOURCE_REPO_URL))
+                            if (intent.resolveActivity(context.packageManager) != null) {
+                                context.startActivity(intent)
+                            }
                         },
                     ) }
                     SettingsItemCard(position = SettingsItemPosition.Bottom) { PreferenceRow(
