@@ -12,6 +12,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -208,6 +210,10 @@ private fun SoundMemoApp(
             navController = navController,
             startDestination = "recorder",
             modifier = modifier,
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None },
         ) {
             composable("recorder") {
                 val context = LocalContext.current
