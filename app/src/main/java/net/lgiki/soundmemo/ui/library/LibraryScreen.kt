@@ -565,14 +565,14 @@ private fun RecordingPropertiesSheet(recording: Recording, onDismiss: () -> Unit
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 text = stringResource(R.string.library_properties_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 8.dp),
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
             )
             PropertyRow(
                 label = stringResource(R.string.library_property_name),
@@ -637,7 +637,9 @@ private fun RecordingPropertiesSheet(recording: Recording, onDismiss: () -> Unit
             }
             TextButton(
                 onClick = onDismiss,
-                modifier = Modifier.align(Alignment.End),
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(end = 12.dp),
             ) {
                 Text(stringResource(R.string.library_properties_close))
             }
@@ -665,7 +667,7 @@ private fun PropertyRow(
     Column(
         modifier = rowModifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(horizontal = 24.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
