@@ -3,9 +3,11 @@ package net.lgiki.soundmemo.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
@@ -28,6 +30,7 @@ fun <T> SingleChoiceDialog(
     title: String,
     options: List<T>,
     optionLabel: @Composable (T) -> String,
+    optionSupporting: @Composable (T) -> String? = { null },
     isSelected: (T) -> Boolean,
     onSelect: (T) -> Unit,
     dismissLabel: String,
@@ -74,12 +77,28 @@ fun <T> SingleChoiceDialog(
                                 selected = selected,
                                 onClick = null,
                             )
-                            Text(
-                                text = optionLabel(option),
-                                style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(vertical = 10.dp),
+                            ) {
+                                Text(
+                                    text = optionLabel(option),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                optionSupporting(option)?.let { supporting ->
+                                    Text(
+                                        text = supporting,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 3,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
                         }
                     }
                 }

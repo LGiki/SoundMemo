@@ -2,6 +2,7 @@ package net.lgiki.soundmemo.ui.settings
 
 import android.Manifest
 import android.content.Intent
+import android.media.AudioDeviceInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -108,7 +109,10 @@ import net.lgiki.soundmemo.domain.recorder.RecordingFormat
 import net.lgiki.soundmemo.domain.recorder.matches
 import net.lgiki.soundmemo.domain.recorder.matchesTypeAndName
 import net.lgiki.soundmemo.domain.recorder.normalizedAudioInputName
+import net.lgiki.soundmemo.domain.recorder.selectableAudioInputDevices
 import net.lgiki.soundmemo.ui.audioInputLabel
+import net.lgiki.soundmemo.ui.audioInputDetailsLabel
+import net.lgiki.soundmemo.ui.audioInputLabels
 
 private const val SOURCE_REPO_URL = "https://github.com/LGiki/SoundMemo"
 
@@ -836,6 +840,7 @@ private fun <T> SingleChoiceSettingsDialog(
         title = title,
         options = options,
         optionLabel = { option -> option.label },
+        optionSupporting = { option -> option.supporting },
         isSelected = { option -> isSelected(option.value) },
         onSelect = { option -> onSelect(option.value) },
         dismissLabel = stringResource(R.string.library_cancel),
@@ -1079,10 +1084,13 @@ private fun microphoneOptions(devices: List<AudioInputDevice>): List<SettingsOpt
         value = null,
         label = stringResource(R.string.settings_microphone_automatic),
     )
-    return listOf(automatic) + devices.map { device ->
+    val selectableDevices = devices.selectableAudioInputDevices()
+    val labels = audioInputLabels(selectableDevices)
+    return listOf(automatic) + selectableDevices.map { device ->
         SettingsOption<AudioInputPreference?>(
             value = device.preference,
-            label = audioInputLabel(type = device.type, productName = device.productName),
+            label = checkNotNull(labels[device.id]),
+            supporting = audioInputDetailsLabel(device.details),
         )
     }
 }
@@ -1095,7 +1103,7 @@ private fun microphoneSupportingText(
 ): String {
     val selectedText = when {
         preference == null -> stringResource(R.string.settings_microphone_automatic)
-        devices.none { preference.matchesTypeAndName(it) } -> stringResource(
+        !microphonePreferenceAvailable(preference, devices) -> stringResource(
             R.string.settings_microphone_unavailable,
             audioInputLabel(type = preference.type, productName = preference.productName),
         )
@@ -1109,12 +1117,23 @@ private fun microphoneSupportingText(
     }
 }
 
+private fun microphonePreferenceAvailable(
+    preference: AudioInputPreference,
+    devices: List<AudioInputDevice>,
+): Boolean =
+    if (preference.type == AudioDeviceInfo.TYPE_BUILTIN_MIC) {
+        devices.any { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC }
+    } else {
+        devices.any { preference.matchesTypeAndName(it) }
+    }
+
 private fun microphoneOptionSelected(
     option: AudioInputPreference?,
     selected: AudioInputPreference?,
     devices: List<AudioInputDevice>,
 ): Boolean = when {
     option == null || selected == null -> option == selected
+    option.type == AudioDeviceInfo.TYPE_BUILTIN_MIC && selected.type == AudioDeviceInfo.TYPE_BUILTIN_MIC -> true
     devices.any { selected.matches(it) } -> option.id == selected.id &&
         option.type == selected.type &&
         normalizedAudioInputName(option.productName) == normalizedAudioInputName(selected.productName)
@@ -1226,4 +1245,5 @@ private enum class SettingsDialog {
 private data class SettingsOption<T>(
     val value: T,
     val label: String,
+    val supporting: String? = null,
 )

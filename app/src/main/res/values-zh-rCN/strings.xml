@@ -170,6 +170,20 @@
     <string name="settings_microphone_usb">USB 麦克风</string>
     <string name="settings_microphone_wired">耳机麦克风</string>
     <string name="settings_microphone_external">外部麦克风</string>
+    <string name="settings_microphone_duplicate_number">%1$s（%2$d）</string>
+    <string name="settings_microphone_location_main_body">内置</string>
+    <string name="settings_microphone_location_movable_body">内置可移动部件</string>
+    <string name="settings_microphone_location_peripheral">外接设备</string>
+    <string name="settings_microphone_directionality_omni">全向</string>
+    <string name="settings_microphone_directionality_bidirectional">双向</string>
+    <string name="settings_microphone_directionality_cardioid">心形指向</string>
+    <string name="settings_microphone_directionality_hypercardioid">超心形指向</string>
+    <string name="settings_microphone_directionality_supercardioid">强心形指向</string>
+    <plurals name="settings_microphone_channels">
+        <item quantity="other">%d 个声道</item>
+    </plurals>
+    <string name="settings_microphone_sample_rate">最高 %1$d kHz</string>
+    <string name="settings_microphone_group_index">组 %1$d，麦克风 %2$d</string>
     <string name="settings_recording_channels">录音声道</string>
     <string name="settings_recording_channels_mono">单声道</string>
     <string name="settings_recording_channels_stereo">立体声（支持时）</string>

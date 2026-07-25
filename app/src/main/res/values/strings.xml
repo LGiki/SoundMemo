@@ -176,6 +176,21 @@
     <string name="settings_microphone_usb">USB microphone</string>
     <string name="settings_microphone_wired">Headset microphone</string>
     <string name="settings_microphone_external">External microphone</string>
+    <string name="settings_microphone_duplicate_number">%1$s (%2$d)</string>
+    <string name="settings_microphone_location_main_body">Built-in</string>
+    <string name="settings_microphone_location_movable_body">Built-in movable part</string>
+    <string name="settings_microphone_location_peripheral">External peripheral</string>
+    <string name="settings_microphone_directionality_omni">Omnidirectional</string>
+    <string name="settings_microphone_directionality_bidirectional">Bidirectional</string>
+    <string name="settings_microphone_directionality_cardioid">Cardioid</string>
+    <string name="settings_microphone_directionality_hypercardioid">Hypercardioid</string>
+    <string name="settings_microphone_directionality_supercardioid">Supercardioid</string>
+    <plurals name="settings_microphone_channels">
+        <item quantity="one">%d channel</item>
+        <item quantity="other">%d channels</item>
+    </plurals>
+    <string name="settings_microphone_sample_rate">Up to %1$d kHz</string>
+    <string name="settings_microphone_group_index">Group %1$d, microphone %2$d</string>
     <string name="settings_recording_channels">Recording channels</string>
     <string name="settings_recording_channels_mono">Mono</string>
     <string name="settings_recording_channels_stereo">Stereo (when supported)</string>

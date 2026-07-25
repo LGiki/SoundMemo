@@ -1,5 +1,6 @@
 package net.lgiki.soundmemo.ui.recorder
 
+import android.media.AudioDeviceInfo
 import android.widget.Toast
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -77,7 +78,10 @@ import net.lgiki.soundmemo.domain.recorder.RecorderStatus
 import net.lgiki.soundmemo.domain.recorder.WAVEFORM_SAMPLE_COUNT
 import net.lgiki.soundmemo.domain.recorder.matches
 import net.lgiki.soundmemo.domain.recorder.normalizedAudioInputName
+import net.lgiki.soundmemo.domain.recorder.selectableAudioInputDevices
 import net.lgiki.soundmemo.ui.audioInputLabel
+import net.lgiki.soundmemo.ui.audioInputDetailsLabel
+import net.lgiki.soundmemo.ui.audioInputLabels
 import net.lgiki.soundmemo.util.formatDuration
 import kotlin.math.log10
 import kotlin.math.roundToInt
@@ -483,19 +487,22 @@ private fun AudioInputPickerDialog(
     onDismiss: () -> Unit,
 ) {
     val automaticLabel = stringResource(R.string.settings_microphone_automatic)
-    val options = listOf<AudioInputDevice?>(null) + devices
+    val selectableDevices = devices.selectableAudioInputDevices()
+    val labels = audioInputLabels(selectableDevices)
+    val options = listOf<AudioInputDevice?>(null) + selectableDevices
     SingleChoiceDialog(
         title = stringResource(R.string.settings_microphone),
         options = options,
         optionLabel = { device ->
-            device?.let { audioInputLabel(it.type, it.productName) } ?: automaticLabel
+            device?.let { checkNotNull(labels[it.id]) } ?: automaticLabel
         },
+        optionSupporting = { device -> device?.let { audioInputDetailsLabel(it.details) } },
         isSelected = { device ->
             device?.let {
                 audioInputPreferenceSelected(
                     option = it.preference,
                     selected = selected,
-                    devices = devices,
+                    devices = selectableDevices,
                 )
             } ?: (selected == null)
         },
@@ -511,6 +518,9 @@ private fun audioInputPreferenceSelected(
     devices: List<AudioInputDevice>,
 ): Boolean {
     if (selected == null) return false
+    if (option.type == AudioDeviceInfo.TYPE_BUILTIN_MIC &&
+        selected.type == AudioDeviceInfo.TYPE_BUILTIN_MIC
+    ) return true
     return if (devices.any { selected.matches(it) }) {
         option.id == selected.id &&
             option.type == selected.type &&
