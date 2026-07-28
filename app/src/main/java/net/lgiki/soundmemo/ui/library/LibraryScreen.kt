@@ -82,6 +82,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.lgiki.soundmemo.R
@@ -391,6 +392,7 @@ private fun RecordingItem(
     RecordingRow(
         title = recording.name,
         metadata = "",
+        verticalContentPadding = 12.dp,
         supportingContent = {
             RecordingMetadata(
                 createdAt = formatDateTime(recording.createdAt),
@@ -782,6 +784,7 @@ internal fun RecordingRow(
     title: String,
     metadata: String,
     modifier: Modifier = Modifier,
+    verticalContentPadding: Dp = 8.dp,
     muted: Boolean = false,
     urgent: Boolean = false,
     selected: Boolean = false,
@@ -807,7 +810,7 @@ internal fun RecordingRow(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = verticalContentPadding),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 leading?.let {
